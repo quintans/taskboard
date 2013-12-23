@@ -1,0 +1,181 @@
+body {
+	padding-top: 50px;
+}
+
+.board {
+	/*border-collapse:collapse;*/
+	border-bottom: 1px solid #cccccc;
+	width: 100%;
+}
+
+.board th {
+	border: 1px solid #cccccc;
+	padding: 4px;
+	font-size: 14px;
+}
+
+.board td, .board th {
+	border-left: 1px solid #cccccc;
+	border-right: 1px solid #cccccc;
+	height: 44px;
+}
+
+.board td {
+	vertical-align: top;
+	height: 500px;
+	width: 33%;
+}
+
+.lane {
+	padding: 1px;
+}
+
+.dragging {
+	-moz-box-shadow: 10px 10px 10px #999;
+	-webkit-box-shadow: 10px 10px 10px #999;
+	box-shadow: 10px 10px 10px #999;
+}
+
+.header {
+	margin-top: 5px;
+}
+
+.footer {
+	margin-bottom: 5px;
+}
+
+span.glyphicon {
+	margin-right: 2px;
+}
+
+.portlet-header .subject {
+	clear: both;
+}
+
+.portlet-header .login {
+	float: left;
+	font-weight: normal;
+}
+
+.portlet-header .deadline {
+	float: right;
+	font-weight: normal;
+}
+
+.portlet {
+	margin: 0 2px 2px 0;
+	font-family: Verdana, Arial, sans-serif;
+	font-size: 0.8em;
+}
+
+.portlet-header {
+	border: 0px;
+	padding-bottom: 4px;
+	padding-left: 0.2em;
+	padding-right: 0.2em;
+	border-bottom: 1px solid #aaaaaa;
+	color: #222222;
+	font-weight: bold;
+}
+
+.portlet-header .ui-icon {
+	float: right;
+}
+
+.portlet-content {
+	padding: 0.4em;
+	display: none;
+	white-space: pre-wrap;
+}
+
+.ui-sortable-placeholder {
+	border: 1px dotted black;
+	visibility: visible !important;
+	height: 50px !important;
+}
+
+.ui-sortable-placeholder * {
+	visibility: hidden;
+}
+
+.cardcolor {
+	float: left;
+	height: 16px;
+	width: 16px;
+	border: 1px solid black;
+	margin: 2px;
+}
+
+.ccselected {
+	height: 18px;
+	width: 18px;
+	border: 2px solid red;
+	margin: 1px;
+}
+
+.no-padding {
+	padding: 0px;
+}
+
+.around-margin {
+	margin-right: 0px !important;
+	margin-left: 0px !important;
+}
+
+.modal-wide {
+	width:940px;
+}
+
+input.ng-invalid-required {
+	border-color: orange;
+	background-color: #FFFFDD;
+}
+input.ng-valid-required {
+	background-color: #FFFFDD;
+}
+
+.datatable tr th {
+    background-color: #dddddd;
+	background-position: right;
+	background-repeat:no-repeat;
+	text-align: left;
+	text-shadow: 1px 1px 1px white;
+	color: black;
+}
+
+.th-no-order {
+}
+
+.glyphicon {
+	cursor: default;
+}
+
+.datatable thead tr th.th-sort-none {
+	background-image: url('images/sort-none.png');
+	cursor: pointer;
+}
+
+.datatable thead tr th.th-sort-asc {
+	background-image: url('images/sort-asc.png');
+}
+
+.datatable thead tr th.th-sort-desc {
+	background-image: url('images/sort-desc.png');
+}
+
+.datatable>thead>tr>th, .table>tbody>tr>td {
+	padding: 2px;
+	vertical-align: middle;
+}
+
+.datatable .form-control {
+	height: 26px;
+	padding: 2px 3px;
+}
+
+.no-head-margin,
+.no-foot-margin,
+.ui-paginator,
+.ui-paginator-msg {
+    margin-top: 0px;
+}
