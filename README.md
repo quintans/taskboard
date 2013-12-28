@@ -5,6 +5,9 @@ A very simple kanban taskboard.
 
 This is a working in progress but it is ready for a test drive.
 
+It uses AngularJS for the frontend and Go(golang) for the backend. The data is stored in a MySQL database.
+The backend supplies JSON services that the frontend consumes.
+
 Features
 -
 * Multiple boards
@@ -12,6 +15,15 @@ Features
 * “Real time” refresh between multiple browsers looking to the same board
 * Configurable e-mail notifications when a task is droped in a column
 
+Dependencies
+-
+Go 1.2
+```
+go get github.com/quintans/toolkit
+go get github.com/quintans/goSQL
+go get github.com/go-sql-driver/mysql
+go get github.com/msbranco/goconfig
+```
 
 Installation
 -
@@ -34,4 +46,4 @@ How To
 Todo
 -
 * Tests
-* Sanitize
+* Sanitize HTML
