@@ -414,15 +414,44 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 		}
 	}
 	// recalculate positions from current position
-	_, err = store.Update(T.TASK).
-		Set(T.TASK_C_POSITION, Minus(T.TASK_C_POSITION, AsIs(1))).
+	// get all task ids by ascending order
+	taskIds := make([]int64, 0)
+	var taskId int64
+	err = store.Query(T.TASK).
+		Column(T.TASK_C_ID).
 		Where(
 		T.TASK_C_LANE_ID.Matches(oldLaneId),
 		T.TASK_C_POSITION.Greater(oldPosition),
-	).Execute()
+	).OrderBy(T.TASK_C_POSITION).
+		Asc(true).
+		ListSimple(func() {
+		taskIds = append(taskIds, taskId)
+	}, &taskId)
 	if err != nil {
 		return err
 	}
+	// increment position
+	for _, id := range taskIds {
+		_, err = store.Update(T.TASK).
+			Set(T.TASK_C_POSITION, Minus(T.TASK_C_POSITION, AsIs(1))).
+			Where(
+			T.TASK_C_ID.Matches(id),
+		).Execute()
+		if err != nil {
+			return err
+		}
+	}
+	/*
+		_, err = store.Update(T.TASK).
+			Set(T.TASK_C_POSITION, Minus(T.TASK_C_POSITION, AsIs(1))).
+			Where(
+			T.TASK_C_LANE_ID.Matches(oldLaneId),
+			T.TASK_C_POSITION.Greater(oldPosition),
+		).Execute()
+		if err != nil {
+			return err
+		}
+	*/
 
 	// check lock validity
 	err = checkLaneVersion(store, oldLaneId, version)
@@ -441,15 +470,44 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 		}
 
 		// recalculate positions from current position
-		_, err = store.Update(T.TASK).
-			Set(T.TASK_C_POSITION, Add(T.TASK_C_POSITION, AsIs(1))).
+		// get all task ids by descending order
+		taskIds := make([]int64, 0)
+		var taskId int64
+		err = store.Query(T.TASK).
+			Column(T.TASK_C_ID).
 			Where(
 			T.TASK_C_LANE_ID.Matches(in.LaneId),
 			T.TASK_C_POSITION.GreaterOrMatch(in.Position),
-		).Execute()
+		).OrderBy(T.TASK_C_POSITION).
+			Asc(false).
+			ListSimple(func() {
+			taskIds = append(taskIds, taskId)
+		}, &taskId)
 		if err != nil {
 			return err
 		}
+		// increment position
+		for _, id := range taskIds {
+			_, err = store.Update(T.TASK).
+				Set(T.TASK_C_POSITION, Add(T.TASK_C_POSITION, AsIs(1))).
+				Where(
+				T.TASK_C_ID.Matches(id),
+			).Execute()
+			if err != nil {
+				return err
+			}
+		}
+		/*
+			_, err = store.Update(T.TASK).
+				Set(T.TASK_C_POSITION, Add(T.TASK_C_POSITION, AsIs(1))).
+				Where(
+				T.TASK_C_LANE_ID.Matches(in.LaneId),
+				T.TASK_C_POSITION.GreaterOrMatch(in.Position),
+			).Execute()
+			if err != nil {
+				return err
+			}
+		*/
 		// sets the position and the lane of the moving task
 		_, err = store.Update(T.TASK).
 			Set(T.TASK_C_LANE_ID, in.LaneId).
