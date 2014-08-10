@@ -166,13 +166,13 @@ func (this *TaskBoardService) DeleteBoard(ctx web.IContext, id int64) error {
 	if _, err := store.Delete(T.LANE).Where(T.LANE_C_BOARD_ID.Matches(id)).Execute(); err != nil {
 		return err
 	}
-
-	if _, err := store.Delete(T.BOARD).Where(T.LANE_C_BOARD_ID.Matches(id)).Execute(); err != nil {
+	// delete board
+	if _, err := store.Delete(T.BOARD).Where(T.BOARD_C_ID.Matches(id)).Execute(); err != nil {
 		return err
 	}
-
-	_, err := myCtx.GetBoardDAO().DeleteById(id)
-	return err
+	// delete Board
+	//_, err := myCtx.GetBoardDAO().DeleteById(id)
+	return nil
 }
 
 func (this *TaskBoardService) AddLane(ctx web.IContext, boardId int64) error {
