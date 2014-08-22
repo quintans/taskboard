@@ -19,17 +19,15 @@ Dependencies
 -
 Go 1.2
 ```
-go get github.com/quintans/toolkit
-go get github.com/quintans/goSQL
-go get github.com/go-sql-driver/mysql
-go get github.com/msbranco/goconfig
+go get github.com/quintans/taskboard
 ```
 
 Installation
 -
-1.	Create a **MySQL** database.
-1.	Execute **sql/taskboard.sql** in the created database.
-1.	Copy of **taskboard.ini.template** to **taskboard.ini** and change taskboard.ini to reflect the execution environment.
+1.	Install a **MySQL** database.
+1.	Execute **sql/create.sql** to create a database and user.
+1.	Connect to the created dabase with the created user and execute **sql/taskboard.sql**.
+1.	Copy **taskboard.ini.template** to **taskboard.ini** and change taskboard.ini to reflect the execution environment.
 1. Compile and execute
 
 How To
@@ -47,3 +45,6 @@ Todo
 -
 * Tests
 * Sanitize HTML
+* Authentication
+* Authorization
+* SSL
