@@ -4,9 +4,9 @@
 /// <reference path="infra.ts"/>
 var TASK_MOVE_BEGIN = "TB_TASK_MOVE_BEGIN";
 var TASK_MOVE_END = "TB_TASK_MOVE_END";
-
 ;
-
+'use strict';
+;
 var loadingLevel = 0;
 var timeoutID = null;
 function showSpinner(show) {
@@ -17,7 +17,8 @@ function showSpinner(show) {
             }, 1000);
         }
         loadingLevel += 1;
-    } else {
+    }
+    else {
         if (loadingLevel == 1) {
             $("#loading").hide();
             clearTimeout(timeoutID);
@@ -26,25 +27,95 @@ function showSpinner(show) {
     }
 }
 ;
-
-angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($httpProvider) {
-    $httpProvider.interceptors.push(function ($q) {
+angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(function ($httpProvider) {
+    $httpProvider.interceptors.push(function ($rootScope, $q, $localStorage) {
         return {
             'request': function (config) {
                 showSpinner(true);
+                config.headers = config.headers || {};
+                if ($localStorage.jwtToken) {
+                    config.headers.Authorization = 'Bearer ' + $localStorage.jwtToken;
+                }
                 return config || $q.when(config);
             },
             'response': function (response) {
                 showSpinner(false);
                 return response || $q.when(response);
             },
-            'responseError': function (rejection) {
+            'responseError': function (response) {
                 showSpinner(false);
-                return $q.reject(rejection);
+                var status = response.status;
+                if (status === 401) {
+                    var def = $q.defer();
+                    var req = {
+                        config: response.config,
+                        deferred: def
+                    };
+                    $rootScope.requests401.push(req);
+                    $rootScope.$broadcast(EVENT_LOGIN_REQUIRED);
+                    return def.promise;
+                }
+                else if (status === 500) {
+                    toolkit.stickyError("Server Error", "Error accessing " + response.config.url + "\nView Log.");
+                }
+                return $q.reject(response);
             }
         };
     });
-}).directive('autoFocus', function ($timeout) {
+}).run(["$rootScope", "$http", "taskBoardService", "$localStorage", function ($rootScope, $http, taskBoardService, $localStorage) {
+    // Holds all the requests which failed due to 401 response.
+    $rootScope.requests401 = [];
+    // On 'event:loginConfirmed', resend all the 401 requests.
+    $rootScope.$on(EVENT_LOGIN_CONFIRMED, function () {
+        var retry = function (req) {
+            $http(req.config).then(function (response) {
+                req.deferred.resolve(response);
+            });
+        };
+        var i;
+        var requests = $rootScope.requests401;
+        for (i = 0; i < requests.length; i++) {
+            retry(requests[i]);
+        }
+        $rootScope.requests401 = [];
+    });
+    // On 'event:loginRequest' send credentials to the server.
+    $rootScope.$on(EVENT_LOGIN_REQUEST, function (event, username, password) {
+        var config = {
+            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" }
+        };
+        var payload = $.param({
+            username: username,
+            password: password
+        });
+        $http.post("login", payload, config).success(function (data) {
+            if (data !== "") {
+                $localStorage.jwtToken = data;
+                $rootScope.$broadcast(EVENT_LOGIN_CONFIRMED);
+            }
+            else {
+                delete $localStorage.jwtToken;
+                toolkit.notice("Login", "Invalid Login");
+            }
+        }).error(function (data, status, headers, config) {
+            // Erase the token if the user fails to log in
+            delete $localStorage.jwtToken;
+            toolkit.stickyError("Login", "Invalid Login");
+        });
+    });
+    function ping() {
+        taskBoardService.ping(function () {
+            $rootScope.$broadcast(EVENT_LOGIN_OK);
+        });
+    }
+    ;
+    // On 'logoutRequest' invoke logout on the server and broadcast 'event:loginRequired'.
+    $rootScope.$on(EVENT_LOGOUT_REQUEST, function () {
+        delete $localStorage.jwtToken;
+        ping();
+    });
+    ping();
+}]).directive('autoFocus', function ($timeout) {
     return {
         link: function (scope, element, attrs) {
             scope.$watch(attrs.autoFocus, function (val) {
@@ -63,7 +134,6 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
                 scope.$apply(function () {
                     scope.$eval(attrs.onEnter);
                 });
-
                 event.preventDefault();
             }
         });
@@ -75,7 +145,6 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
                 scope.$apply(function () {
                     scope.$eval(attrs.onEscape);
                 });
-
                 event.preventDefault();
             }
         });
@@ -166,7 +235,6 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
         },
         compile: function (tElemet, attrs, transclude) {
             tElemet.resizableColumns();
-
             // linking function
             return function (scope, element, attrs) {
                 // asynchronously loads widths
@@ -208,10 +276,8 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
                         break;
                 }
             };
-
             // the default that will be overriden
             element.addClass("th-sort-none");
-
             // and a call to server side may have been issued
             var p = gridCtrl.provider();
             if (p != null && p.criteria.orderBy == attrs.gridOrder) {
@@ -222,16 +288,13 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
                 scope.$apply(function () {
                     var p = gridCtrl.provider();
                     var asc = -1;
-
                     // only collect sorting direction if it is the same order as previous
                     if (p.criteria.orderBy == attrs.gridOrder)
                         asc = scope.direction;
                     p.criteria.orderBy = attrs.gridOrder;
-
                     // switch
                     var newDir = asc <= 0 ? 1 : -1;
                     p.criteria.ascending = (newDir > 0);
-
                     // update
                     scope.direction = newDir;
                     removeSortClass(element);
@@ -240,7 +303,6 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
                 });
                 return true;
             };
-
             //element.find(".tagname").bind("click", handler);
             element.bind("click", handler);
         }
@@ -260,13 +322,11 @@ angular.module("taskboard", ["ngRoute", "remoteServices"]).config(function ($htt
                 var tmpUpper = pg + offset;
                 var lower = tmpLower < 1 ? 1 : tmpLower;
                 var upper = tmpUpper > len ? len : tmpUpper;
-
                 // upper bound
                 var off = upper - tmpUpper;
                 if (upper != tmpUpper && lower > 1) {
                     lower = lower + off < 1 ? 1 : lower + off;
                 }
-
                 // lower bound
                 off = lower - tmpLower;
                 if (lower != tmpLower && upper < len) {

@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"github.com/dgrijalva/jwt-go"
 	"github.com/quintans/goSQL/db"
 	"github.com/quintans/goSQL/dbx"
 	trx "github.com/quintans/goSQL/translators"
@@ -12,11 +13,18 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/msbranco/goconfig"
 
+	T "github.com/quintans/taskboard/biz/tables"
+	"github.com/quintans/taskboard/common/entity"
+	"github.com/quintans/taskboard/common/lov"
+
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"regexp"
 	"runtime"
@@ -29,6 +37,9 @@ const (
 	UNKNOWN = "TB00"
 	DBFAIL  = "TB01"
 	DBLOCK  = "TB02"
+
+	PRINCIPAL_KEY = "principal"
+	JWT_TIMEOUT   = 15
 )
 
 var (
@@ -183,33 +194,153 @@ func init() {
 	Poll = poller.NewPoller(30 * time.Second)
 }
 
-func TransactionFilter(ctx web.IContext) error {
-	if err := TM.Transaction(func(DB db.IDb) error {
-		appCtx := ctx.(*AppCtx)
-		appCtx.Store = DB
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	return b, err
+}
 
-		return ctx.Proceed()
-	}); err != nil {
-		// a business error should not produce log
-		logger.Errorf("Failed Transaction: %s", err)
-		return err
+func GenerateRandomString(s int) (string, error) {
+	b, err := GenerateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b), err
+}
+
+type Principal struct {
+	UserId   int64
+	Username string
+	Roles    []lov.ERole
+	Version  int64
+}
+
+var secret, _ = GenerateRandomBytes(64)
+
+func KeyFunction(token *jwt.Token) (interface{}, error) {
+	return secret, nil
+}
+
+func serializePrincipal(p Principal) (string, error) {
+	principal, err := json.Marshal(p)
+	if err != nil {
+		return "", err
 	}
+	// Create JWT token
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims[PRINCIPAL_KEY] = string(principal)
+	// Expiration time in minutes
+	token.Claims["exp"] = time.Now().Add(time.Minute * JWT_TIMEOUT).Unix()
+	return token.SignedString(secret)
+}
+
+func deserializePrincipal(r *http.Request) *Principal {
+	token, err := jwt.ParseFromRequest(r, KeyFunction)
+	if err == nil && token.Valid {
+		p := token.Claims[PRINCIPAL_KEY].(string)
+		principal := &Principal{}
+		json.Unmarshal([]byte(p), principal)
+		return principal
+	} else {
+		return nil
+	}
+}
+
+func RefreshFilter(ctx web.IContext) error {
+	p := deserializePrincipal(ctx.GetRequest())
+	if p != nil {
+		// check if version is valid - if the user changed the password the version changes
+		// TODO what happens if this is called right after the user submited a password change
+		// and the reply was not yet delivered/processed
+		var uid int64
+		store := ctx.(*AppCtx).Store
+		ok, err := store.Query(T.USER).Column(T.USER_C_ID).
+			Where(T.USER_C_ID.Matches(p.UserId).And(T.USER_C_VERSION.Matches(p.Version))).
+			SelectTo(&uid)
+		if !ok || err != nil {
+			return err
+		}
+		tokenString, err := serializePrincipal(*p)
+		if err != nil {
+			return err
+		}
+		ctx.GetResponse().Write([]byte(tokenString))
+	}
+
 	return nil
 }
 
+func LoginFilter(ctx web.IContext) error {
+	//logger.Debugf("serving static(): " + ctx.GetRequest().URL.Path)
+	username := ctx.GetRequest().FormValue("username")
+	pass := ctx.GetRequest().FormValue("password")
+	var err error
+	if username != "" && pass != "" {
+		store := ctx.(*AppCtx).Store
+		// usernames are stored in lowercase
+		username = strings.ToLower(username)
+		var user entity.User
+		var ok bool
+		if ok, err = store.Query(T.USER).
+			All().
+			Inner(T.USER_A_ROLES).Fetch().
+			Where(
+			db.And(T.USER_C_USERNAME.Matches(username),
+				T.USER_C_DEAD.IsNull(),
+				T.USER_C_PASSWORD.Matches(pass))).
+			SelectTree(&user); ok && err == nil {
+			// role array
+			roles := make([]lov.ERole, len(user.Roles))
+			for k, v := range user.Roles {
+				roles[k] = *v.Kind
+			}
+			tokenString, err := serializePrincipal(Principal{
+				*user.Id,
+				*user.Username,
+				roles,
+				*user.Version,
+			})
+			if err != nil {
+				return err
+			}
+			ctx.GetResponse().Write([]byte(tokenString))
+		}
+	}
+
+	return err
+}
+
+func AuthenticationFilter(ctx web.IContext) error {
+	p := deserializePrincipal(ctx.GetRequest())
+	if p != nil {
+		// for authorizations and business logic
+		ctx.(*AppCtx).SetPrincipal(*p)
+		return ctx.Proceed()
+	} else {
+		logger.Debugf("Unable to proceed: invalid token!")
+		http.Error(ctx.GetResponse(), "Unauthorized", http.StatusUnauthorized)
+	}
+
+	return nil
+}
+
+func TransactionFilter(ctx web.IContext) error {
+	return TM.Transaction(func(DB db.IDb) error {
+		appCtx := ctx.(*AppCtx)
+		appCtx.Store = DB
+		p := ctx.GetPrincipal()
+		if p != nil {
+			appCtx.Store.SetAttribute(entity.ATTR_USERID, p.(Principal).UserId)
+		}
+
+		return ctx.Proceed()
+	})
+}
+
 func NoTransactionFilter(ctx web.IContext) error {
-	logger.Debugf("Initiating Transaction")
-	if err := TM.NoTransaction(func(DB db.IDb) error {
+	return TM.NoTransaction(func(DB db.IDb) error {
 		appCtx := ctx.(*AppCtx)
 		appCtx.Store = DB
 
 		return ctx.Proceed()
-	}); err != nil {
-		// a business error should not produce log
-		logger.Errorf("Failed Transaction: %s", err)
-		return err
-	}
-	return nil
+	})
 }
 
 func ContextFactory(w http.ResponseWriter, r *http.Request) web.IContext {
@@ -221,7 +352,7 @@ func Limit(ctx web.IContext) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if e, ok := r.(runtime.Error); ok {
-				logger.Errorf("%s\n%s\n", e, debug.Stack())
+				logger.Errorf("%s\n========== Begin Stack Trace ==========\n%s\n========== End Stack Trace ==========\n", e, debug.Stack())
 			}
 			err = formatError(ctx.GetResponse(), r.(error))
 		}
@@ -261,4 +392,29 @@ func formatError(w http.ResponseWriter, err error) error {
 func jsonError(code string, msg string) error {
 	jmsg, _ := json.Marshal(msg)
 	return errors.New(fmt.Sprintf(`{"code":"%s", "message":%s}`, code, jmsg))
+}
+
+func ResponseBuffer(ctx web.IContext) error {
+	appCtx := ctx.(*AppCtx)
+	rec := httptest.NewRecorder()
+	w := appCtx.Response
+	// passing a ResponseRecorder instead of the original RW
+	appCtx.Response = rec
+	err := ctx.Proceed()
+	// restores the original response
+	appCtx.Response = w
+	if err == nil {
+		// status code
+		w.WriteHeader(rec.Code)
+
+		// we copy the original headers first
+		for k, v := range rec.Header() {
+			w.Header()[k] = v
+		}
+
+		// then write out the original body
+		w.Write(rec.Body.Bytes())
+	}
+
+	return err
 }

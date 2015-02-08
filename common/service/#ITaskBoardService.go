@@ -13,6 +13,12 @@ import (
 
 type ITaskBoardService interface {
 	
+	// return
+	Ping(ctx web.IContext) error
+	
+	// return
+	WhoAmI(ctx web.IContext) (dto.IdentityDTO, error)
+	
 	// param criteria	
 	// return
 	FetchBoards(ctx web.IContext, criteria dto.BoardSearchDTO) (app.Page, error)
@@ -44,6 +50,25 @@ type ITaskBoardService interface {
 	// param boardId	
 	// return
 	DeleteLastLane(ctx web.IContext, boardId int64) error
+	
+	// param boardId	
+	// param userId	
+	// return
+	AddUserToBoard(ctx web.IContext, input AddUserToBoardIn) error
+	
+	// param boardId	
+	// param userId	
+	// return
+	RemoveUserFromBoard(ctx web.IContext, input RemoveUserFromBoardIn) error
+	
+	// param name	
+	// return
+	SaveUserName(ctx web.IContext, name *string) error
+	
+	// param oldPwd	
+	// param newPwd	
+	// return
+	ChangeUserPassword(ctx web.IContext, input ChangeUserPasswordIn) (string, error)
 	
 	// param task	
 	// return

@@ -5,70 +5,67 @@
 package entity;
 import (
 	"github.com/quintans/toolkit"
+	"github.com/quintans/taskboard/common/lov"
 	"github.com/quintans/toolkit/ext"
+	"github.com/quintans/toolkit/web/app"
 )
 
-var _ toolkit.Hasher = &Notification{}
+var _ toolkit.Hasher = &Role{}
 
-func NewNotification() *Notification {
-	this := new(Notification)	
+func NewRole() *Role {
+	this := new(Role)	
 	return this
 }
 
-type Notification struct {
+type Role struct {
 	EntityAudit
 	
 	//ATTRIBUTES
-	Email string `json:"email"`
-	TaskId *int64 `json:"taskId"`
-	LaneId *int64 `json:"laneId"`
+	Kind *lov.ERole `json:"kind"`
+	UserId *int64 `json:"userId"`
 	// ASSOCIATIONS
-	// task
-	Task *Task `json:"task"`
-	// lane
-	Lane *Lane `json:"lane"`
+	// user
+	User *User `json:"user"`
 }
 
-func (this *Notification) Clone() interface{} {
-	clone := NewNotification()
+func (this *Role) Clone() interface{} {
+	clone := NewRole()
 	clone.Copy(this)
 	return clone
 }
 	
-func (this *Notification) Copy(entity *Notification) {
+func (this *Role) Copy(entity *Role) {
 	if entity != nil {
 		this.EntityAudit.Copy(entity.EntityAudit)
 		// attributes
-		this.Email = entity.Email
+		this.Kind = (*lov.ERole)(app.CopyString((*string)(entity.Kind)))
 		// associations
-		this.Task = entity.Task
-		this.Lane = entity.Lane
+		this.User = entity.User
 	}
 }
 		
-func (this *Notification) String() string {
+func (this *Role) String() string {
 	sb := toolkit.NewStrBuffer()
 	sb.Add("{Id: ", this.Id, ", Version: ", this.Version)
-	sb.Add(", Email: ", this.Email)
-	sb.Add(", TaskId: ", this.TaskId)
-	sb.Add(", LaneId: ", this.LaneId)
+	sb.Add(", Kind: ", this.Kind)
+	sb.Add(", UserId: ", this.UserId)
 	sb.Add("}")
 	return sb.String()
 }
 	
-func (this *Notification) Equals(e interface{}) bool {
+func (this *Role) Equals(e interface{}) bool {
 	if this == e {
 		return true
 	}
 
 	switch t := e.(type) {
-	case *Notification:
+	case *Role:
 		return this.Id != nil && t.Id != nil && *this.Id == *t.Id
 	}
 	return false
 }
 
-func (this *Notification) HashCode() int {
+func (this *Role) HashCode() int {
 	result := toolkit.HashType(toolkit.HASH_SEED, this)
 	result = toolkit.HashLong(result, ext.DefInt64(this.Id, 0))
 	return result

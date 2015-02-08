@@ -38,6 +38,24 @@ func NewTaskBoardService(appCtx *AppCtx) service.ITaskBoardService {
 type TaskBoardService struct {
 }
 
+func (this *TaskBoardService) Ping(ctx web.IContext) error {
+	return nil
+}
+
+func (this *TaskBoardService) WhoAmI(ctx web.IContext) (dto.IdentityDTO, error) {
+	p := ctx.GetPrincipal().(Principal)
+	identity := dto.IdentityDTO{}
+	identity.Name = &p.Username
+	roles := make([]*string, len(p.Roles))
+	for _, role := range p.Roles {
+		s := string(role)
+		roles = append(roles, &s)
+	}
+	identity.Roles = roles
+
+	return identity, nil
+}
+
 func (this *TaskBoardService) broadcastBoardChange(ctx web.IContext, id int64) error {
 	board, err := this.FullyLoadBoardById(ctx, id)
 	if err == nil {
@@ -233,7 +251,10 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 
 	// get all lanes for this board with lower position than the supplyied lane
 	var lanes []*entity.Lane
-	err = store.Query(T.LANE).All().Where(T.LANE_C_BOARD_ID.Matches(boardId)).OrderBy(T.LANE_C_POSITION).Asc(false).List(&lanes)
+	err = store.Query(T.LANE).All().
+		Where(T.LANE_C_BOARD_ID.Matches(boardId)).
+		OrderBy(T.LANE_C_POSITION).Asc(false).
+		List(&lanes)
 	if err != nil {
 		return err
 	}
@@ -283,6 +304,79 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 	}
 
 	return this.broadcastBoardChange(ctx, boardId)
+}
+
+// param boardId
+// param userId
+// return
+func (this *TaskBoardService) AddUserToBoard(ctx web.IContext, input service.AddUserToBoardIn) error {
+	store := ctx.(*AppCtx).Store
+	_, err := store.Insert(T.BOARD_USER).
+		Set(T.BOARD_USER_C_BOARDS_ID, input.BoardId).
+		Set(T.BOARD_USER_C_USERS_ID, input.UserId).
+		Execute()
+
+	return err
+}
+
+// param boardId
+// param userId
+// return
+func (this *TaskBoardService) RemoveUserFromBoard(ctx web.IContext, input service.RemoveUserFromBoardIn) error {
+	store := ctx.(*AppCtx).Store
+	var err error
+	_, err = store.Delete(T.BOARD_USER).
+		Where(T.BOARD_USER_C_BOARDS_ID.Matches(input.BoardId).
+		And(T.BOARD_USER_C_USERS_ID.Matches(input.UserId))).
+		Execute()
+
+	return err
+}
+
+// param name
+// return
+func (this *TaskBoardService) SaveUserName(ctx web.IContext, name *string) error {
+	myCtx := ctx.(*AppCtx)
+	store := myCtx.Store
+
+	p := myCtx.GetPrincipal().(Principal)
+
+	var err error
+	_, err = store.Update(T.USER).
+		Set(T.USER_C_NAME, name).
+		Where(T.USER_C_ID.Matches(p.UserId).And(T.USER_C_VERSION.Matches(p.Version))).
+		Execute()
+
+	return err
+}
+
+// param oldPwd
+// param newPwd
+// return
+func (this *TaskBoardService) ChangeUserPassword(ctx web.IContext, input service.ChangeUserPasswordIn) (string, error) {
+	myCtx := ctx.(*AppCtx)
+	store := myCtx.Store
+
+	p := myCtx.GetPrincipal().(Principal)
+
+	var (
+		err error
+	)
+
+	if _, err = store.Update(T.USER).
+		Set(T.USER_C_PASSWORD, input.NewPwd).
+		Set(T.USER_C_VERSION, p.Version+1).
+		Where(
+		And(T.USER_C_ID.Matches(p.UserId),
+			T.USER_C_VERSION.Matches(p.Version),
+			T.USER_C_PASSWORD.Matches(input.OldPwd)),
+	).
+		Execute(); err == nil {
+		p.Version += 1
+		return serializePrincipal(p)
+	}
+
+	return "", err
 }
 
 // param task

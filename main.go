@@ -35,11 +35,18 @@ func main() {
 		return nil
 	})
 
+	// this endponint is called as the expiration time of the token approaches
+	fh.PushF("/refresh", impl.RefreshFilter)
+
+	fh.PushF("/login", impl.LoginFilter, impl.TransactionFilter)
+
 	// json services will be the most used so, they are at the front
 	appCtx := impl.NewAppCtx(nil, nil)
 	// service factory
 	json := appCtx.BuildJsonRpc(impl.TransactionFilter)
 	fh.Push("/rest/*", json)
+
+	fh.PushF("/rest/*", impl.ResponseBuffer, impl.AuthenticationFilter)
 
 	// limits size
 	fh.PushF("/*", impl.Limit)

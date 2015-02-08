@@ -19,7 +19,9 @@ func NewAppCtx(w http.ResponseWriter, r *http.Request) *AppCtx {
 	this.BoardDAOFactory = NewBoardDAO
 	this.LaneDAOFactory = NewLaneDAO
 	this.TaskDAOFactory = NewTaskDAO
+	this.UserDAOFactory = NewUserDAO
 	this.NotificationDAOFactory = NewNotificationDAO
+	this.RoleDAOFactory = NewRoleDAO
 	this.TaskBoardServiceFactory = NewTaskBoardService
 	return this
 }
@@ -34,8 +36,12 @@ type AppCtx struct {
 	LaneDAOFactory func(appCtx *AppCtx) entity.ILaneDAO
 	taskDAO entity.ITaskDAO
 	TaskDAOFactory func(appCtx *AppCtx) entity.ITaskDAO
+	userDAO entity.IUserDAO
+	UserDAOFactory func(appCtx *AppCtx) entity.IUserDAO
 	notificationDAO entity.INotificationDAO
 	NotificationDAOFactory func(appCtx *AppCtx) entity.INotificationDAO
+	roleDAO entity.IRoleDAO
+	RoleDAOFactory func(appCtx *AppCtx) entity.IRoleDAO
 	taskBoardService service.ITaskBoardService
 	TaskBoardServiceFactory func(appCtx *AppCtx) service.ITaskBoardService
 }
@@ -61,11 +67,25 @@ func (this *AppCtx) GetTaskDAO() entity.ITaskDAO {
 	return this.taskDAO
 }
 
+func (this *AppCtx) GetUserDAO() entity.IUserDAO {
+	if this.userDAO == nil {
+		this.userDAO = this.UserDAOFactory(this)
+	}
+	return this.userDAO
+}
+
 func (this *AppCtx) GetNotificationDAO() entity.INotificationDAO {
 	if this.notificationDAO == nil {
 		this.notificationDAO = this.NotificationDAOFactory(this)
 	}
 	return this.notificationDAO
+}
+
+func (this *AppCtx) GetRoleDAO() entity.IRoleDAO {
+	if this.roleDAO == nil {
+		this.roleDAO = this.RoleDAOFactory(this)
+	}
+	return this.roleDAO
 }
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
@@ -94,31 +114,61 @@ func (this *AppCtx) BuildJsonRpc(transaction func(ctx web.IContext) error) *web.
 	}
 	
 	svc = json.RegisterAs("taskboard", this.GetTaskBoardService())
+	act = svc.GetAction("Ping")
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
+	act = svc.GetAction("WhoAmI")
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("FetchBoards")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("FetchBoardById")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("FullyLoadBoardById")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("SaveBoard")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
 	act = svc.GetAction("DeleteBoard")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
 	act = svc.GetAction("AddLane")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
 	act = svc.GetAction("SaveLane")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
 	act = svc.GetAction("DeleteLastLane")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
+	act = svc.GetAction("AddUserToBoard")
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
+	act = svc.GetAction("RemoveUserFromBoard")
+	act.PushFilterFunc(jsonpProtection, authorize("ADMIN"), transaction)
+	act = svc.GetAction("SaveUserName")
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
+	act = svc.GetAction("ChangeUserPassword")
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("SaveTask")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("MoveTask")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("FetchNotifications")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("SaveNotification")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	act = svc.GetAction("DeleteNotification")
-	act.PushFilterFunc(jsonpProtection, transaction)
+	act.PushFilterFunc(jsonpProtection, authorize("USER"), transaction)
 	return json
+}
+
+func authorize(roles ...string) func(ctx web.IContext) error {
+	return func(ctx web.IContext) error {
+		user := ctx.GetPrincipal().(Principal)
+		for _, r := range roles {
+			for _, role := range user.Roles {
+				if r == string(role) {
+					if err := ctx.Proceed(); err != nil {
+						return err
+					}
+					return nil
+				}
+			}
+		}
+		http.Error(ctx.GetResponse(), "Unauthorized", http.StatusUnauthorized)
+		return nil
+	}
 }

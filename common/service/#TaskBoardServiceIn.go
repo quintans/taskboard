@@ -5,6 +5,21 @@
 package service
 
 
+type AddUserToBoardIn struct {
+	BoardId int64 `json:"boardId"`
+	UserId int64 `json:"userId"`
+}
+
+type RemoveUserFromBoardIn struct {
+	BoardId int64 `json:"boardId"`
+	UserId int64 `json:"userId"`
+}
+
+type ChangeUserPasswordIn struct {
+	OldPwd string `json:"oldPwd"`
+	NewPwd string `json:"newPwd"`
+}
+
 type MoveTaskIn struct {
 	TaskId int64 `json:"taskId"`
 	LaneId int64 `json:"laneId"`
