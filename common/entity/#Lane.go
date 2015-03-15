@@ -58,7 +58,7 @@ func (this *Lane) String() string {
 	sb.Add("{Id: ", this.Id, ", Version: ", this.Version)
 	sb.Add(", Name: ", this.Name)
 	sb.Add(", Position: ", this.Position)
-	sb.Add(", BoardId: ", this.BoardId)
+	sb.Add(", *BoardId: ", *this.BoardId)
 	sb.Add("}")
 	return sb.String()
 }

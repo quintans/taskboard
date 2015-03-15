@@ -5,16 +5,16 @@
 package dto
 
 import (
-	"github.com/quintans/toolkit/web/app"
 )
 
-func NewBoardSearchDTO() BoardSearchDTO {
-	this := BoardSearchDTO{}
+func NewBoardUserDTO() BoardUserDTO {
+	this := BoardUserDTO{}
 	return this
 }
 
-type BoardSearchDTO struct {
-	app.Criteria
+type BoardUserDTO struct {
+	IdVersionDTO
 	
 	Name *string `json:"name"`
+	Belongs bool `json:"belongs"`
 }

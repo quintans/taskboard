@@ -23,8 +23,22 @@ func main() {
 		time.Sleep(100 * time.Millisecond)
 	}()
 
-	// DO NOT FORGET: filters are applied in reverse order (LIFO)
+	// Filters will be executed in order
 	fh := web.NewFilterHandler(impl.ContextFactory)
+
+	// limits size
+	fh.PushF("/*", impl.Limit)
+	// security
+	fh.PushF("/rest/*", impl.AuthenticationFilter, impl.ResponseBuffer)
+	// json services will be the most used so, they are at the front
+	appCtx := impl.NewAppCtx(nil, nil)
+	// service factory
+	json := appCtx.BuildJsonRpc(impl.TransactionFilter)
+	fh.Push("/rest/*", json)
+
+	fh.PushF("/login", impl.ResponseBuffer, impl.TransactionFilter, impl.LoginFilter)
+	// this endponint is called as the expiration time of the token approaches
+	fh.PushF("/ping", impl.ResponseBuffer, impl.AuthenticationFilter, impl.TransactionFilter, impl.PingFilter)
 
 	// delivering static content and preventing malicious access
 	fs := web.OnlyFilesFS{http.Dir(impl.ContentDir)}
@@ -34,22 +48,6 @@ func main() {
 		fileServer.ServeHTTP(ctx.GetResponse(), ctx.GetRequest())
 		return nil
 	})
-
-	// this endponint is called as the expiration time of the token approaches
-	fh.PushF("/refresh", impl.RefreshFilter)
-
-	fh.PushF("/login", impl.LoginFilter, impl.TransactionFilter)
-
-	// json services will be the most used so, they are at the front
-	appCtx := impl.NewAppCtx(nil, nil)
-	// service factory
-	json := appCtx.BuildJsonRpc(impl.TransactionFilter)
-	fh.Push("/rest/*", json)
-
-	fh.PushF("/rest/*", impl.ResponseBuffer, impl.AuthenticationFilter)
-
-	// limits size
-	fh.PushF("/*", impl.Limit)
 
 	http.Handle("/", fh)
 	http.Handle("/feed", impl.Poll)

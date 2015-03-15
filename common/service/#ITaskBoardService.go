@@ -6,18 +6,27 @@ package service;
 
 import (
 	"github.com/quintans/taskboard/common/entity"
-	"github.com/quintans/taskboard/common/dto"
 	"github.com/quintans/toolkit/web"
+	"github.com/quintans/taskboard/common/dto"
 	"github.com/quintans/toolkit/web/app"
 )
 
 type ITaskBoardService interface {
 	
 	// return
-	Ping(ctx web.IContext) error
-	
-	// return
 	WhoAmI(ctx web.IContext) (dto.IdentityDTO, error)
+	
+	// return only the users that belong to board
+	//
+	// param id	
+	// return
+	FetchBoardUsers(ctx web.IContext, id int64) ([]dto.BoardUserDTO, error)
+	
+	// return all users and flag them if they belong to board
+	//
+	// param criteria	
+	// return
+	FetchBoardAllUsers(ctx web.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error)
 	
 	// param criteria	
 	// return
@@ -50,6 +59,18 @@ type ITaskBoardService interface {
 	// param boardId	
 	// return
 	DeleteLastLane(ctx web.IContext, boardId int64) error
+	
+	// param user	
+	// return
+	SaveUser(ctx web.IContext, user dto.UserDTO) (bool, error)
+	
+	// param criteria	
+	// return
+	FetchUsers(ctx web.IContext, criteria dto.UserSearchDTO) (app.Page, error)
+	
+	// param user	
+	// return
+	DisableUser(ctx web.IContext, user dto.IdVersionDTO) error
 	
 	// param boardId	
 	// param userId	

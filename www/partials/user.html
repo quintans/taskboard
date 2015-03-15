@@ -1,0 +1,38 @@
+<div x-ng-cloak class="ng-cloak">
+	<h1>{{identity.name}}</h1>
+
+		<form role="form" name="userNameForm">
+			<div class="form-group">
+		      <label for="name">Name</label>
+		      <input id="name" data-ng-model="name" type="text" class="form-control" placeholder="User Name" required>
+		    </div>
+			<div class="form-group">
+				<button type="button" x-ng-click="changeName()" x-ng-disabled="!userNameForm.$valid" class="btn btn-primary">Change Name</button>
+			</div>
+		</form>
+	    
+		<form role="form" name="userForm">
+			<div class="form-group">
+				<label for="cardTitle">Old Password</label>
+				<input type="password" id="oldPassword" class="form-control" maxlength="255"
+					x-ng-model="oldPassword" required/>
+			</div>
+			<div class="form-group">
+				<label for="cardTitle">New Password</label>
+				<input type="password" id="password" class="form-control" maxlength="255"
+					x-ng-model="password" required/>
+			</div>
+			<div class="form-group">
+				<label for="cardTitle" >Retype New Password</label>
+				<input type="password" id="passwordCheck" class="form-control" maxlength="255"
+					x-ng-model="passwordCheck" required/>
+			</div>
+			<div class="form-group">
+				<button type="button" x-ng-click="changePassword()" x-ng-disabled="!userForm.$valid" class="btn btn-primary">Change Password</button>
+			</div>
+		</form>    
+	<div class="modal-footer">
+		<button type="button" class="btn btn-default" x-back>Back</button>
+	</div>
+
+</div>

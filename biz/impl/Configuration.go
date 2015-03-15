@@ -1,6 +1,9 @@
 package impl
 
 import (
+	"bytes"
+	"io"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/quintans/goSQL/db"
 	"github.com/quintans/goSQL/dbx"
@@ -8,6 +11,7 @@ import (
 	tk "github.com/quintans/toolkit"
 	"github.com/quintans/toolkit/log"
 	"github.com/quintans/toolkit/web"
+	"github.com/quintans/toolkit/web/app"
 	"github.com/quintans/toolkit/web/poller"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -17,14 +21,13 @@ import (
 	"github.com/quintans/taskboard/common/entity"
 	"github.com/quintans/taskboard/common/lov"
 
+	"compress/gzip"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"regexp"
 	"runtime"
@@ -212,6 +215,15 @@ type Principal struct {
 	Version  int64
 }
 
+func (this Principal) HasRole(role lov.ERole) bool {
+	for _, r := range this.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
 var secret, _ = GenerateRandomBytes(64)
 
 func KeyFunction(token *jwt.Token) (interface{}, error) {
@@ -243,31 +255,39 @@ func deserializePrincipal(r *http.Request) *Principal {
 	}
 }
 
-func RefreshFilter(ctx web.IContext) error {
-	p := deserializePrincipal(ctx.GetRequest())
-	if p != nil {
-		// check if version is valid - if the user changed the password the version changes
-		// TODO what happens if this is called right after the user submited a password change
-		// and the reply was not yet delivered/processed
-		var uid int64
-		store := ctx.(*AppCtx).Store
-		ok, err := store.Query(T.USER).Column(T.USER_C_ID).
-			Where(T.USER_C_ID.Matches(p.UserId).And(T.USER_C_VERSION.Matches(p.Version))).
-			SelectTo(&uid)
-		if !ok || err != nil {
-			return err
-		}
-		tokenString, err := serializePrincipal(*p)
-		if err != nil {
-			return err
-		}
-		ctx.GetResponse().Write([]byte(tokenString))
+func PingFilter(ctx web.IContext) error {
+	ctx.GetResponse().Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// TODO what happens if this is called right after the user submited a password change
+	// and the reply was not yet delivered/processed
+
+	p := ctx.GetPrincipal().(Principal)
+	// check if version is valid - if the user changed the password the version changes
+	var uid int64
+	store := ctx.(*AppCtx).Store
+	ok, err := store.Query(T.USER).Column(T.USER_C_ID).
+		Where(T.USER_C_ID.Matches(p.UserId).And(T.USER_C_VERSION.Matches(p.Version))).
+		SelectInto(&uid)
+	if !ok {
+		// version is different
+		logger.Debugf("Unable to revalidate the token, because the user no longer exists or it was changed (different version)")
+		http.Error(ctx.GetResponse(), "Unauthorized", http.StatusUnauthorized)
+		return nil
+	} else if err != nil {
+		return err
 	}
+	tokenString, err := serializePrincipal(p)
+	if err != nil {
+		return err
+	}
+	ctx.GetResponse().Write([]byte(tokenString))
 
 	return nil
 }
 
 func LoginFilter(ctx web.IContext) error {
+	ctx.GetResponse().Header().Set("Content-Type", "text/html; charset=utf-8")
+
 	//logger.Debugf("serving static(): " + ctx.GetRequest().URL.Path)
 	username := ctx.GetRequest().FormValue("username")
 	pass := ctx.GetRequest().FormValue("password")
@@ -283,13 +303,13 @@ func LoginFilter(ctx web.IContext) error {
 			Inner(T.USER_A_ROLES).Fetch().
 			Where(
 			db.And(T.USER_C_USERNAME.Matches(username),
-				T.USER_C_DEAD.IsNull(),
+				T.USER_C_DEAD.Matches(app.NOT_DELETED),
 				T.USER_C_PASSWORD.Matches(pass))).
 			SelectTree(&user); ok && err == nil {
 			// role array
 			roles := make([]lov.ERole, len(user.Roles))
 			for k, v := range user.Roles {
-				roles[k] = *v.Kind
+				roles[k] = v.Kind
 			}
 			tokenString, err := serializePrincipal(Principal{
 				*user.Id,
@@ -347,8 +367,30 @@ func ContextFactory(w http.ResponseWriter, r *http.Request) web.IContext {
 	return NewAppCtx(w, r)
 }
 
-// limits the body of a post
+// Gzip Compression
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+// limits the body of a post, compress response and format eventual errors
 func Limit(ctx web.IContext) (err error) {
+	/*
+		Very Important: Before compressing the response, the "Content-Type" header must be properly set!
+	*/
+	if strings.Contains(fmt.Sprint(ctx.GetRequest().Header["Accept-Encoding"]), "gzip") {
+		appCtx := ctx.(*AppCtx)
+		w := appCtx.Response
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		appCtx.Response = gzipResponseWriter{Writer: gz, ResponseWriter: w}
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			if e, ok := r.(runtime.Error); ok {
@@ -371,46 +413,82 @@ func formatError(w http.ResponseWriter, err error) error {
 	switch t := err.(type) {
 	case *web.HttpFail:
 		if t.Status == http.StatusInternalServerError {
-			return jsonError(t.GetCode(), t.GetMessage())
+			jsonError(w, t.GetCode(), t.GetMessage())
 		} else {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			http.Error(w, t.Message, t.Status)
-			return nil
 		}
 	case *dbx.PersistenceFail:
 		logger.Errorf("%s", err)
-		return jsonError(t.GetCode(), t.GetMessage())
+		jsonError(w, t.GetCode(), t.GetMessage())
 	case *dbx.OptimisticLockFail:
 		logger.Errorf("%s", err)
-		return jsonError(t.GetCode(), t.GetMessage())
+		jsonError(w, t.GetCode(), t.GetMessage())
 	case tk.Fault:
-		return jsonError(t.GetCode(), t.GetMessage())
+		jsonError(w, t.GetCode(), t.GetMessage())
 	default:
-		return jsonError(UNKNOWN, err.Error())
+		jsonError(w, UNKNOWN, err.Error())
+	}
+	return nil
+}
+
+func jsonError(w http.ResponseWriter, code string, msg string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	jmsg, _ := json.Marshal(msg)
+	http.Error(w, fmt.Sprintf(`{"code":"%s", "message":%s}`, code, jmsg), http.StatusInternalServerError)
+}
+
+type MyResponse struct {
+	Body   *bytes.Buffer
+	header http.Header
+	Code   int
+}
+
+func NewMyResponse() *MyResponse {
+	return &MyResponse{
+		Body:   new(bytes.Buffer),
+		header: make(http.Header),
 	}
 }
 
-func jsonError(code string, msg string) error {
-	jmsg, _ := json.Marshal(msg)
-	return errors.New(fmt.Sprintf(`{"code":"%s", "message":%s}`, code, jmsg))
+func (this *MyResponse) Header() http.Header {
+	return this.header
 }
 
+func (this *MyResponse) Write(data []byte) (int, error) {
+	if this.Code == 0 {
+		this.Code = http.StatusOK
+	}
+	return this.Body.Write(data)
+}
+
+func (this *MyResponse) WriteHeader(code int) {
+	this.Code = code
+}
+
+var _ http.ResponseWriter = &MyResponse{}
+
+// buffer the response, permiting setting headers after starting writing the response.
+// It also gzips the response if the client browser supports it.
 func ResponseBuffer(ctx web.IContext) error {
 	appCtx := ctx.(*AppCtx)
-	rec := httptest.NewRecorder()
+	rec := NewMyResponse()
 	w := appCtx.Response
-	// passing a ResponseRecorder instead of the original RW
+	// passing a buffer instead of the original RW
 	appCtx.Response = rec
+	// restores the original response, even in the case of a panic
+	defer func() {
+		appCtx.Response = w
+	}()
 	err := ctx.Proceed()
-	// restores the original response
-	appCtx.Response = w
 	if err == nil {
-		// status code
-		w.WriteHeader(rec.Code)
-
 		// we copy the original headers first
 		for k, v := range rec.Header() {
 			w.Header()[k] = v
 		}
+
+		// status code
+		w.WriteHeader(rec.Code)
 
 		// then write out the original body
 		w.Write(rec.Body.Bytes())

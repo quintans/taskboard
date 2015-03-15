@@ -66,14 +66,35 @@ func (this UserDAOBase) FindAll() ([]*entity.User, error) {
 	return entities, nil
 }
     
-func (this UserDAOBase) FindByActiveUser(username *string, dead *int64) (*entity.User, error) {
+func (this UserDAOBase) SoftDelete(entity *entity.User ) error {
+	store := this.Context.Store
+	return app.SoftDelete(store, T.USER, entity)
+}
+	
+func (this UserDAOBase) SoftDeleteByIdAndVersion(id int64, version int64) error {
+	store := this.Context.Store
+	return app.SoftDeleteByIdAndVersion(store, T.USER, id, version);
+}
+    
+func (this UserDAOBase) FindAllWithDeleted() ([]*entity.User, error) {
+	typ := (*entity.User)(nil)
+	store := this.Context.Store
+	list, err := app.FindAllWithDeleted(store, T.USER, typ)
+	if err != nil {
+		return nil, err
+	}
+	entities := ConvertToUser(list)
+	return entities, nil
+}
+    
+func (this UserDAOBase) FindByActiveUser(username *string) (*entity.User, error) {
 	entity := entity.NewUser()
 	store := this.Context.Store
 	ok, err := store.Query(T.USER).
 		All().
     	Where(
     		T.USER_C_USERNAME.Matches(*username),
-    		T.USER_C_DEAD.Matches(*dead),
+    		T.USER_C_DEAD.Matches(app.NOT_DELETED),
 		).
 		SelectTo(entity)
     if err != nil {

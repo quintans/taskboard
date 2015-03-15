@@ -40,6 +40,14 @@ body {
 	box-shadow: 10px 10px 10px #999;
 }
 
+.spacebar {
+	padding-top: 10px;
+}
+
+.spacer {
+	margin-top: 10px;
+}
+
 .header {
 	margin-top: 5px;
 }
@@ -50,6 +58,10 @@ body {
 
 span.glyphicon {
 	margin-right: 2px;
+}
+
+.draggablePanel {
+	cursor: move;
 }
 
 .portlet-header .subject {
@@ -182,4 +194,8 @@ input.ng-valid-required {
 .ui-paginator,
 .ui-paginator-msg {
     margin-top: 0px;
+}
+
+.form-control-feedback {
+    pointer-events: auto;
 }

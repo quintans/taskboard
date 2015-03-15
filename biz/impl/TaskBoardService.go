@@ -4,11 +4,14 @@
 package impl
 
 import (
+	"errors"
+
 	. "github.com/quintans/goSQL/db"
 	"github.com/quintans/goSQL/dbx"
 	T "github.com/quintans/taskboard/biz/tables"
 	"github.com/quintans/taskboard/common/dto"
 	"github.com/quintans/taskboard/common/entity"
+	"github.com/quintans/taskboard/common/lov"
 	"github.com/quintans/taskboard/common/service"
 	. "github.com/quintans/toolkit/ext"
 	"github.com/quintans/toolkit/web"
@@ -38,18 +41,20 @@ func NewTaskBoardService(appCtx *AppCtx) service.ITaskBoardService {
 type TaskBoardService struct {
 }
 
-func (this *TaskBoardService) Ping(ctx web.IContext) error {
-	return nil
-}
-
 func (this *TaskBoardService) WhoAmI(ctx web.IContext) (dto.IdentityDTO, error) {
 	p := ctx.GetPrincipal().(Principal)
 	identity := dto.IdentityDTO{}
-	identity.Name = &p.Username
+	identity.Id = &p.UserId
+	app := ctx.(*AppCtx)
+	var name string
+	app.Store.Query(T.USER).Column(T.USER_C_NAME).
+		Where(T.USER_C_ID.Matches(p.UserId)).
+		SelectInto(&name)
+	identity.Name = &name
 	roles := make([]*string, len(p.Roles))
-	for _, role := range p.Roles {
+	for k, role := range p.Roles {
 		s := string(role)
-		roles = append(roles, &s)
+		roles[k] = &s
 	}
 	identity.Roles = roles
 
@@ -120,15 +125,76 @@ func checkLaneVersion(store IDb, laneId int64, version int64) error {
 	return nil
 }
 
+func (this *TaskBoardService) FetchBoardUsers(ctx web.IContext, id int64) ([]dto.BoardUserDTO, error) {
+	app := ctx.(*AppCtx)
+	if err := canAccessBoard(app.Store, app.AsPrincipal(), id); err != nil {
+		return nil, err
+	}
+	var u []dto.BoardUserDTO
+	err := app.Store.Query(T.USER).
+		Column(T.USER_C_ID).
+		Column(T.USER_C_NAME).
+		Inner(T.USER_A_BOARDS).On(T.BOARD_C_ID.Matches(id)).Join().
+		List(&u)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
 // param criteria
 // return
-func (this *TaskBoardService) FetchBoards(ctx web.IContext, criteria dto.BoardSearchDTO) (app.Page, error) {
-	q := ctx.(*AppCtx).Store.Query(T.BOARD).All()
+func (this *TaskBoardService) FetchBoardAllUsers(ctx web.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error) {
+	store := ctx.(*AppCtx).Store
+	belongs := store.Query(T.BOARD_USER).Alias("b").
+		CountAll().
+		Where(
+		T.BOARD_USER_C_BOARDS_ID.Matches(criteria.BoardId),
+		T.BOARD_USER_C_USERS_ID.Matches(T.USER_C_ID.For("u")),
+	)
+
+	q := store.Query(T.USER).Alias("u").
+		Column(T.USER_C_ID).
+		Column(T.USER_C_VERSION).
+		Column(T.USER_C_NAME).
+		Column(belongs).As("Belongs")
+
+	if !IsEmpty(criteria.Name) {
+		// insenstive case like
+		q.Where(T.USER_C_NAME.ILike("%" + *criteria.Name + "%"))
+	}
 	order := criteria.OrderBy
 	if !IsEmpty(order) {
 		switch *order {
 		case "name":
-			q.OrderBy(T.BOARD_C_NAME)
+			q.Order(T.USER_C_NAME)
+		}
+
+		q.Asc(DefBool(criteria.Ascending, true))
+	}
+
+	return app.QueryForPage(q, criteria.Criteria, (*dto.BoardUserDTO)(nil), nil)
+}
+
+// param criteria
+// return
+func (this *TaskBoardService) FetchBoards(ctx web.IContext, criteria dto.BoardSearchDTO) (app.Page, error) {
+	q := ctx.(*AppCtx).Store.Query(T.BOARD).All()
+	p := ctx.GetPrincipal().(Principal)
+	// if not admin restrict to boards that the user has access
+	if !p.HasRole(lov.ERole_ADMIN) {
+		q.Inner(T.BOARD_A_USERS).On(T.USER_C_ID.Matches(p.UserId)).Join()
+	}
+	if !IsEmpty(criteria.Name) {
+		// insenstive case like
+		q.Where(T.BOARD_C_NAME.ILike("%" + *criteria.Name + "%"))
+	}
+	order := criteria.OrderBy
+	if !IsEmpty(order) {
+		switch *order {
+		case "name":
+			q.Order(T.BOARD_C_NAME)
 		}
 
 		q.Asc(DefBool(criteria.Ascending, true))
@@ -140,14 +206,25 @@ func (this *TaskBoardService) FetchBoards(ctx web.IContext, criteria dto.BoardSe
 // param id
 // return
 func (this *TaskBoardService) FetchBoardById(ctx web.IContext, id int64) (*entity.Board, error) {
-	return ctx.(*AppCtx).GetBoardDAO().FindById(id)
+	app := ctx.(*AppCtx)
+	if err := canAccessBoard(app.Store, app.AsPrincipal(), id); err != nil {
+		return nil, err
+	}
+
+	return app.GetBoardDAO().FindById(id)
 }
 
 func (this *TaskBoardService) FullyLoadBoardById(ctx web.IContext, id int64) (*entity.Board, error) {
+	app := ctx.(*AppCtx)
+	if err := canAccessBoard(app.Store, app.AsPrincipal(), id); err != nil {
+		return nil, err
+	}
+
 	var board = new(entity.Board)
-	if _, err := ctx.(*AppCtx).Store.Query(T.BOARD).All().
+	if _, err := app.Store.Query(T.BOARD).All().
 		Outer(T.BOARD_A_LANES).OrderBy(T.LANE_C_POSITION).
 		Outer(T.LANE_A_TASKS).OrderBy(T.TASK_C_POSITION).
+		Outer(T.TASK_A_USER).Include(T.USER_C_ID, T.USER_C_NAME).
 		Fetch().
 		Where(T.BOARD_C_ID.Matches(id)).
 		SelectTree(board); err != nil {
@@ -306,6 +383,123 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 	return this.broadcastBoardChange(ctx, boardId)
 }
 
+// param user
+// return
+func (this *TaskBoardService) SaveUser(ctx web.IContext, user dto.UserDTO) (bool, error) {
+	store := ctx.(*AppCtx).Store
+	if user.Id == nil {
+		id, err := store.Insert(T.USER).
+			Set(T.USER_C_VERSION, 1).
+			Set(T.USER_C_NAME, user.Name).
+			Set(T.USER_C_USERNAME, user.Username).
+			Set(T.USER_C_PASSWORD, user.Password).
+			Set(T.USER_C_DEAD, app.NOT_DELETED).
+			Execute()
+		if err != nil {
+			return false, err
+		}
+		// create roles
+		role := &entity.Role{
+			Kind:   lov.ERole_USER,
+			UserId: &id,
+		}
+		store.Insert(T.ROLE).Submit(role)
+		// admin role
+		if user.Admin {
+			role = &entity.Role{
+				Kind:   lov.ERole_ADMIN,
+				UserId: &id,
+			}
+			store.Insert(T.ROLE).Submit(role)
+		}
+	} else {
+		dml := store.Update(T.USER).
+			Set(T.USER_C_VERSION, *user.Version+1).
+			Set(T.USER_C_NAME, user.Name).
+			Set(T.USER_C_USERNAME, user.Username).
+			Where(T.USER_C_ID.Matches(*user.Id).
+			And(T.USER_C_VERSION.Matches(*user.Version).
+			And(T.USER_C_DEAD.Matches(app.NOT_DELETED))))
+		if user.Password != nil {
+			dml.Set(T.USER_C_PASSWORD, user.Password)
+		}
+		_, err := dml.Execute()
+		if err != nil {
+			return false, err
+		}
+		// get admin role
+		var cnt int64
+		criteria := T.ROLE_C_USER_ID.Matches(*user.Id).
+			And(T.ROLE_C_KIND.Matches(lov.ERole_ADMIN))
+		store.Query(T.ROLE).
+			CountAll().
+			Where(criteria).
+			SelectInto(&cnt)
+
+		if user.Admin && cnt == 0 {
+			store.Insert(T.ROLE).Submit(&entity.Role{
+				Kind:   lov.ERole_ADMIN,
+				UserId: user.Id,
+			})
+		} else if !user.Admin && cnt != 0 {
+			// no longer admin
+			// if I am the admin, cannot remove myself from admin
+			p := ctx.GetPrincipal().(Principal)
+			if p.UserId != *user.Id {
+				store.Delete(T.ROLE).
+					Where(criteria).
+					Execute()
+			}
+		}
+	}
+
+	return true, nil
+}
+
+// param criteria
+// return
+func (this *TaskBoardService) FetchUsers(ctx web.IContext, criteria dto.UserSearchDTO) (app.Page, error) {
+	store := ctx.(*AppCtx).Store
+	admin := store.Query(T.ROLE).Alias("r").
+		CountAll().
+		Where(
+		T.ROLE_C_USER_ID.Matches(T.USER_C_ID.For("u")),
+		T.ROLE_C_KIND.Matches(lov.ERole_ADMIN),
+	)
+
+	// password field not included
+	q := ctx.(*AppCtx).Store.Query(T.USER).Alias("u").
+		Column(T.USER_C_ID).
+		Column(T.USER_C_VERSION).
+		Column(T.USER_C_NAME).
+		Column(T.USER_C_USERNAME).
+		Column(admin).As("Admin")
+	c := T.USER_C_DEAD.Matches(app.NOT_DELETED)
+	if !IsEmpty(criteria.Name) {
+		// insenstive case like
+		c = c.And(T.USER_C_NAME.ILike("%" + *criteria.Name + "%"))
+	}
+	q.Where(c)
+	order := criteria.OrderBy
+	if !IsEmpty(order) {
+		switch *order {
+		case "name":
+			q.Order(T.USER_C_NAME)
+		}
+
+		q.Asc(DefBool(criteria.Ascending, true))
+	}
+
+	return app.QueryForPage(q, criteria.Criteria, (*dto.UserDTO)(nil), nil)
+
+}
+
+// param userId
+// return
+func (this *TaskBoardService) DisableUser(ctx web.IContext, iv dto.IdVersionDTO) error {
+	return app.SoftDeleteByIdAndVersion(ctx.(*AppCtx).Store, T.USER, *iv.Id, *iv.Version)
+}
+
 // param boardId
 // param userId
 // return
@@ -359,11 +553,7 @@ func (this *TaskBoardService) ChangeUserPassword(ctx web.IContext, input service
 
 	p := myCtx.GetPrincipal().(Principal)
 
-	var (
-		err error
-	)
-
-	if _, err = store.Update(T.USER).
+	r, err := store.Update(T.USER).
 		Set(T.USER_C_PASSWORD, input.NewPwd).
 		Set(T.USER_C_VERSION, p.Version+1).
 		Where(
@@ -371,7 +561,9 @@ func (this *TaskBoardService) ChangeUserPassword(ctx web.IContext, input service
 			T.USER_C_VERSION.Matches(p.Version),
 			T.USER_C_PASSWORD.Matches(input.OldPwd)),
 	).
-		Execute(); err == nil {
+		Execute()
+
+	if err == nil && r > 0 {
 		p.Version += 1
 		return serializePrincipal(p)
 	}
@@ -382,16 +574,20 @@ func (this *TaskBoardService) ChangeUserPassword(ctx web.IContext, input service
 // param task
 // return
 func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*entity.Task, error) {
-	myCtx := ctx.(*AppCtx)
-	store := myCtx.Store
+	app := ctx.(*AppCtx)
+	store := app.Store
 
 	var boardId int64
 	if task.Id != nil {
+		if err := canAccessTask(store, app.AsPrincipal(), *task.Id); err != nil {
+			return nil, err
+		}
+
 		// save without afecting position and lane
 		affected, err := store.Update(T.TASK).Columns(
 			T.TASK_C_VERSION,
 			T.TASK_C_MODIFICATION,
-			T.TASK_C_RESPONSIBLE,
+			T.TASK_C_USER_ID,
 			T.TASK_C_TITLE,
 			T.TASK_C_DETAIL,
 			T.TASK_C_HEAD_COLOR,
@@ -399,7 +595,7 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 		).Values(
 			*task.Version+1,
 			time.Now(),
-			task.Responsible,
+			task.UserId,
 			task.Title,
 			task.Detail,
 			task.HeadColor,
@@ -469,7 +665,11 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 // param idVersion
 // return
 func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) error {
-	store := ctx.(*AppCtx).Store
+	app := ctx.(*AppCtx)
+	store := app.Store
+	if err := canAccessTask(store, app.AsPrincipal(), in.TaskId); err != nil {
+		return err
+	}
 
 	/*
 	 * ORIGIN LANE
@@ -776,4 +976,36 @@ func (this *TaskBoardService) SaveNotification(ctx web.IContext, notification *e
 func (this *TaskBoardService) DeleteNotification(ctx web.IContext, id int64) error {
 	_, err := ctx.(*AppCtx).GetNotificationDAO().DeleteById(id)
 	return err
+}
+
+func canAccessBoard(store IDb, p Principal, boardId int64) error {
+	if !p.HasRole(lov.ERole_ADMIN) {
+		var id int64
+		store.Query(T.BOARD_USER).
+			Column(T.BOARD_USER_C_BOARDS_ID).
+			Where(
+			T.BOARD_USER_C_BOARDS_ID.Matches(boardId),
+			T.BOARD_USER_C_USERS_ID.Matches(p.UserId),
+		).
+			SelectInto(&id)
+		if id == 0 {
+			return errors.New("You do not have access to this board!")
+		}
+	}
+	return nil
+}
+
+func canAccessTask(store IDb, p Principal, boardId int64) error {
+	if !p.HasRole(lov.ERole_ADMIN) {
+		var id int64
+		store.Query(T.TASK).
+			Column(T.TASK_C_ID).
+			Inner(T.TASK_A_LANE, T.LANE_A_BOARD, T.BOARD_A_USERS).On(T.USER_C_ID.Matches(p.UserId)).Join().
+			Where(T.TASK_C_ID.Matches(boardId)).
+			SelectInto(&id)
+		if id == 0 {
+			return errors.New("You do not have access to this task!")
+		}
+	}
+	return nil
 }

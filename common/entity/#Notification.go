@@ -20,8 +20,8 @@ type Notification struct {
 	
 	//ATTRIBUTES
 	Email string `json:"email"`
-	TaskId *int64 `json:"taskId"`
-	LaneId *int64 `json:"laneId"`
+	TaskId int64 `json:"taskId"`
+	LaneId int64 `json:"laneId"`
 	// ASSOCIATIONS
 	// task
 	Task *Task `json:"task"`

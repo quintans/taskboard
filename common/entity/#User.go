@@ -23,12 +23,14 @@ type User struct {
 	Name *string `json:"name"`
 	Username *string `json:"username"`
 	Password *string `json:"password"`
-	Dead *int64 `json:"dead"`
+	Dead int64 `json:"dead"`
 	// ASSOCIATIONS
 	// boards
 	Boards []*Board `json:"boards"`
 	// roles
 	Roles []*Role `json:"roles"`
+	// tasks
+	Tasks []*Task `json:"tasks"`
 }
 
 func (this *User) Clone() interface{} {
@@ -44,12 +46,14 @@ func (this *User) Copy(entity *User) {
 		this.Name = app.CopyString(entity.Name)
 		this.Username = app.CopyString(entity.Username)
 		this.Password = app.CopyString(entity.Password)
-		this.Dead = app.CopyInteger(entity.Dead)
+		this.Dead = entity.Dead
 		// associations
 		this.Boards = make([]*Board, len(entity.Boards), cap(entity.Boards))
 		copy(this.Boards, entity.Boards)
 		this.Roles = make([]*Role, len(entity.Roles), cap(entity.Roles))
 		copy(this.Roles, entity.Roles)
+		this.Tasks = make([]*Task, len(entity.Tasks), cap(entity.Tasks))
+		copy(this.Tasks, entity.Tasks)
 	}
 }
 		

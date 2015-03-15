@@ -15,5 +15,5 @@ type IRoleDAO interface {
     Save(entity *entity.Role) error
     FindById(id int64) (*entity.Role, error)
     FindAll() ([]*entity.Role, error)
-    FindByUserKind(userId *int64, kind *string) (*entity.Role, error)
+    FindByUserKind(userId *int64, kind string) (*entity.Role, error)
 }

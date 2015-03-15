@@ -2,7 +2,7 @@
 		<div x-ng-show="board.lanes.length==null" class="alert alert-info">Add columns to start using the board</div>
 		<table class="board">
 			<tr>
-				<th x-ng-repeat="lane in board.lanes" x-ng-dblclick="cname=lane.name;editingColumn=true">
+				<th x-ng-repeat="lane in board.lanes" x-ng-dblclick="cname=lane.name;editingColumn=hasRole('ADMIN')">
 					<span x-ng-hide="editingColumn">{{lane.name}}</span>
 					<span x-ng-hide="editingColumn" class="glyphicon glyphicon-plus pull-right" x-ng-click="newTask(lane)"></span>
 					<input class="form-control" type="text"
@@ -17,7 +17,7 @@
 			<tr>
 				<td x-tb-lane x-ng-repeat="lane in board.lanes" style="width: {{100/board.lanes.length}}%">
 					<div x-tb-portlet x-ng-repeat="task in lane.tasks">
-						<div class="portlet-header" style="background: {{task.headColor}}" x-ng-dblclick="editTask(task)">
+						<div class="portlet-header" ng-style="{'background': task.headColor}" x-ng-dblclick="editTask(task)">
 							<span x-ng-click="removeTask(task)" class='glyphicon glyphicon-remove pull-right'></span> <span x-ng-click="toogle(task.id)" x-ng-hide="task.detail==null || task.detail==''"
 								x-tb-toogle class="glyphicon glyphicon-chevron-{{isExpanded(task.id) && 'up' || 'down'}} pull-right"></span>
 							<div class="dropdown pull-right">
@@ -28,7 +28,7 @@
 									<li><a x-ng-click="editNotifications(task)">Notifications</a></li>
 								</ul>
 							</div>
-							<span class="login">{{task.responsible}}</span>
+							<span class="login">{{task.user.name}}</span>
 							<div class="subject">{{task.title}}</div>
 						</div>
 						<div class="portlet-content" style="background: {{task.bodyColor}}; display: {{isExpanded(task.id) && 'block' || 'none'}};">{{task.detail}}</div>
@@ -44,7 +44,7 @@
 				<div class="modal-header">
 					<button type="button" class="close" data-dismiss="modal"
 						aria-hidden="true">&times;</button>
-					<h4 class="modal-title" id="myModalLabel">{{etask.id == null && 'New' || 'Edit'}} task for column '{{etask.lane.name}}'</h4>
+					<h4 class="modal-title" id="myModalLabel">{{etask.id == null && 'New' || 'Edit'}} Task</h4>
 				</div>
 				<div class="modal-body no-padding">
 					<form class="form-horizontal" role="form" name="taskForm">
@@ -58,8 +58,9 @@
 						<div class="form-group around-margin header">
 							<label for="respTitle" class="col-sm-2 control-label">Responsible</label>
 							<div class="col-sm-10">
-								<input type="text" id="respTitle" class="form-control" maxlength="255"
-									placeholder="Responsible for task" x-ng-model="etask.responsible" required />
+								<select id="respTitle" class="form-control" x-ng-model="taskUser" 
+									x-ng-options="opt as opt.name for opt in boardUsers">
+            					</select>
 							</div>
 						</div>
 						<div class="form-group around-margin">

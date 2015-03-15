@@ -8,13 +8,14 @@ import (
 	"github.com/quintans/toolkit/web/app"
 )
 
-func NewBoardSearchDTO() BoardSearchDTO {
-	this := BoardSearchDTO{}
+func NewBoardUserSearchDTO() BoardUserSearchDTO {
+	this := BoardUserSearchDTO{}
 	return this
 }
 
-type BoardSearchDTO struct {
+type BoardUserSearchDTO struct {
 	app.Criteria
 	
+	BoardId int64 `json:"boardId"`
 	Name *string `json:"name"`
 }

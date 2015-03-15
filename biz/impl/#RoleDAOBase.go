@@ -66,14 +66,14 @@ func (this RoleDAOBase) FindAll() ([]*entity.Role, error) {
 	return entities, nil
 }
     
-func (this RoleDAOBase) FindByUserKind(userId *int64, kind *string) (*entity.Role, error) {
+func (this RoleDAOBase) FindByUserKind(userId *int64, kind string) (*entity.Role, error) {
 	entity := entity.NewRole()
 	store := this.Context.Store
 	ok, err := store.Query(T.ROLE).
 		All().
     	Where(
     		T.ROLE_C_USER_ID.Matches(*userId),
-    		T.ROLE_C_KIND.Matches(*kind),
+    		T.ROLE_C_KIND.Matches(kind),
 		).
 		SelectTo(entity)
     if err != nil {

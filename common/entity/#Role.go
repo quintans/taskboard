@@ -7,7 +7,6 @@ import (
 	"github.com/quintans/toolkit"
 	"github.com/quintans/taskboard/common/lov"
 	"github.com/quintans/toolkit/ext"
-	"github.com/quintans/toolkit/web/app"
 )
 
 var _ toolkit.Hasher = &Role{}
@@ -21,7 +20,7 @@ type Role struct {
 	EntityAudit
 	
 	//ATTRIBUTES
-	Kind *lov.ERole `json:"kind"`
+	Kind lov.ERole `json:"kind"`
 	UserId *int64 `json:"userId"`
 	// ASSOCIATIONS
 	// user
@@ -38,7 +37,7 @@ func (this *Role) Copy(entity *Role) {
 	if entity != nil {
 		this.EntityAudit.Copy(entity.EntityAudit)
 		// attributes
-		this.Kind = (*lov.ERole)(app.CopyString((*string)(entity.Kind)))
+		this.Kind = entity.Kind
 		// associations
 		this.User = entity.User
 	}
@@ -48,7 +47,7 @@ func (this *Role) String() string {
 	sb := toolkit.NewStrBuffer()
 	sb.Add("{Id: ", this.Id, ", Version: ", this.Version)
 	sb.Add(", Kind: ", this.Kind)
-	sb.Add(", UserId: ", this.UserId)
+	sb.Add(", *UserId: ", *this.UserId)
 	sb.Add("}")
 	return sb.String()
 }

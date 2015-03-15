@@ -15,5 +15,8 @@ type IUserDAO interface {
     Save(entity *entity.User) error
     FindById(id int64) (*entity.User, error)
     FindAll() ([]*entity.User, error)
-    FindByActiveUser(username *string, dead *int64) (*entity.User, error)
+	SoftDelete(entity *entity.User) error
+    SoftDeleteByIdAndVersion(id int64, version int64) error
+    FindAllWithDeleted() ([]*entity.User, error)
+    FindByActiveUser(username *string) (*entity.User, error)
 }
