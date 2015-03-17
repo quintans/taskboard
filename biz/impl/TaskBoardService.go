@@ -222,8 +222,8 @@ func (this *TaskBoardService) FullyLoadBoardById(ctx web.IContext, id int64) (*e
 
 	var board = new(entity.Board)
 	if _, err := app.Store.Query(T.BOARD).All().
-		Outer(T.BOARD_A_LANES).OrderBy(T.LANE_C_POSITION).
-		Outer(T.LANE_A_TASKS).OrderBy(T.TASK_C_POSITION).
+		Outer(T.BOARD_A_LANES).AscBy(T.LANE_C_POSITION).
+		Outer(T.LANE_A_TASKS).AscBy(T.TASK_C_POSITION).
 		Outer(T.TASK_A_USER).Include(T.USER_C_ID, T.USER_C_NAME).
 		Fetch().
 		Where(T.BOARD_C_ID.Matches(id)).
@@ -330,7 +330,7 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 	var lanes []*entity.Lane
 	err = store.Query(T.LANE).All().
 		Where(T.LANE_C_BOARD_ID.Matches(boardId)).
-		OrderBy(T.LANE_C_POSITION).Asc(false).
+		Order(T.LANE_C_POSITION).Asc(false).
 		List(&lanes)
 	if err != nil {
 		return err
@@ -716,7 +716,7 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 		Where(
 		T.TASK_C_LANE_ID.Matches(oldLaneId),
 		T.TASK_C_POSITION.Greater(oldPosition),
-	).OrderBy(T.TASK_C_POSITION).
+	).Order(T.TASK_C_POSITION).
 		Asc(true).
 		ListSimple(func() {
 		taskIds = append(taskIds, taskId)
@@ -735,17 +735,6 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 			return err
 		}
 	}
-	/*
-		_, err = store.Update(T.TASK).
-			Set(T.TASK_C_POSITION, Minus(T.TASK_C_POSITION, AsIs(1))).
-			Where(
-			T.TASK_C_LANE_ID.Matches(oldLaneId),
-			T.TASK_C_POSITION.Greater(oldPosition),
-		).Execute()
-		if err != nil {
-			return err
-		}
-	*/
 
 	// check lock validity
 	err = checkLaneVersion(store, oldLaneId, version)
@@ -772,7 +761,7 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 			Where(
 			T.TASK_C_LANE_ID.Matches(in.LaneId),
 			T.TASK_C_POSITION.GreaterOrMatch(in.Position),
-		).OrderBy(T.TASK_C_POSITION).
+		).Order(T.TASK_C_POSITION).
 			Asc(false).
 			ListSimple(func() {
 			taskIds = append(taskIds, taskId)
@@ -791,17 +780,6 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 				return err
 			}
 		}
-		/*
-			_, err = store.Update(T.TASK).
-				Set(T.TASK_C_POSITION, Add(T.TASK_C_POSITION, AsIs(1))).
-				Where(
-				T.TASK_C_LANE_ID.Matches(in.LaneId),
-				T.TASK_C_POSITION.GreaterOrMatch(in.Position),
-			).Execute()
-			if err != nil {
-				return err
-			}
-		*/
 		// sets the position and the lane of the moving task
 		_, err = store.Update(T.TASK).
 			Set(T.TASK_C_LANE_ID, in.LaneId).

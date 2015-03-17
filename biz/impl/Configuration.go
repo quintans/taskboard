@@ -51,6 +51,7 @@ var (
 
 	ContentDir     string
 	IpPort         string
+	HttpsOnly      bool
 	postLimit      int64
 	sessionTimeout time.Duration
 
@@ -92,6 +93,8 @@ func init() {
 	IpPort, _ = c.GetString("web", "ip_port")
 	IpPort = replaceOsEnv(IpPort)
 	fmt.Println("[web]ip_port=", IpPort)
+	HttpsOnly, _ = c.GetBool("web", "https_only")
+	fmt.Println("[web]https_only=", HttpsOnly)
 	timeout, _ := c.GetInt64("web", "session_timeout")
 	fmt.Println("[web]session_timeout=", timeout)
 	sessionTimeout = time.Duration(timeout) * time.Minute
@@ -377,12 +380,27 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
+func isHttps(r *http.Request) bool {
+	return r.URL.Scheme == "https" ||
+		strings.HasPrefix(r.Proto, "HTTPS") ||
+		r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
 // limits the body of a post, compress response and format eventual errors
 func Limit(ctx web.IContext) (err error) {
+	r := ctx.GetRequest()
+	// https only -- redirect in openshift
+	if HttpsOnly && !isHttps(r) {
+		url := "https://" + r.Host + r.RequestURI
+		logger.Debugf("redirecting to %s", url)
+		http.Redirect(ctx.GetResponse(), r, url, http.StatusMovedPermanently)
+		return
+	}
+
 	/*
 		Very Important: Before compressing the response, the "Content-Type" header must be properly set!
 	*/
-	if strings.Contains(fmt.Sprint(ctx.GetRequest().Header["Accept-Encoding"]), "gzip") {
+	if strings.Contains(fmt.Sprint(r.Header["Accept-Encoding"]), "gzip") {
 		appCtx := ctx.(*AppCtx)
 		w := appCtx.Response
 		w.Header().Set("Content-Encoding", "gzip")
@@ -400,8 +418,8 @@ func Limit(ctx web.IContext) (err error) {
 		}
 	}()
 
-	logger.Debugf("requesting " + ctx.GetRequest().URL.Path)
-	ctx.GetRequest().Body = http.MaxBytesReader(ctx.GetResponse(), ctx.GetRequest().Body, postLimit)
+	logger.Debugf("requesting %s", r.URL.Path)
+	r.Body = http.MaxBytesReader(ctx.GetResponse(), r.Body, postLimit)
 	err = ctx.Proceed()
 	if err != nil {
 		err = formatError(ctx.GetResponse(), err)
