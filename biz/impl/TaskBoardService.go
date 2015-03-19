@@ -170,8 +170,7 @@ func (this *TaskBoardService) FetchBoardAllUsers(ctx web.IContext, criteria dto.
 		case "name":
 			q.Order(T.USER_C_NAME)
 		}
-
-		q.Asc(DefBool(criteria.Ascending, true))
+		applyDirection(q, criteria.Criteria)
 	}
 
 	return app.QueryForPage(q, criteria.Criteria, (*dto.BoardUserDTO)(nil), nil)
@@ -197,7 +196,7 @@ func (this *TaskBoardService) FetchBoards(ctx web.IContext, criteria dto.BoardSe
 			q.Order(T.BOARD_C_NAME)
 		}
 
-		q.Asc(DefBool(criteria.Ascending, true))
+		applyDirection(q, criteria.Criteria)
 	}
 
 	return app.QueryForPage(q, criteria.Criteria, (*entity.Board)(nil), nil)
@@ -222,8 +221,8 @@ func (this *TaskBoardService) FullyLoadBoardById(ctx web.IContext, id int64) (*e
 
 	var board = new(entity.Board)
 	if _, err := app.Store.Query(T.BOARD).All().
-		Outer(T.BOARD_A_LANES).AscBy(T.LANE_C_POSITION).
-		Outer(T.LANE_A_TASKS).AscBy(T.TASK_C_POSITION).
+		Outer(T.BOARD_A_LANES).OrderBy(T.LANE_C_POSITION).
+		Outer(T.LANE_A_TASKS).OrderBy(T.TASK_C_POSITION).
 		Outer(T.TASK_A_USER).Include(T.USER_C_ID, T.USER_C_NAME).
 		Fetch().
 		Where(T.BOARD_C_ID.Matches(id)).
@@ -330,7 +329,7 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 	var lanes []*entity.Lane
 	err = store.Query(T.LANE).All().
 		Where(T.LANE_C_BOARD_ID.Matches(boardId)).
-		Order(T.LANE_C_POSITION).Asc(false).
+		Order(T.LANE_C_POSITION).Desc().
 		List(&lanes)
 	if err != nil {
 		return err
@@ -487,7 +486,7 @@ func (this *TaskBoardService) FetchUsers(ctx web.IContext, criteria dto.UserSear
 			q.Order(T.USER_C_NAME)
 		}
 
-		q.Asc(DefBool(criteria.Ascending, true))
+		applyDirection(q, criteria.Criteria)
 	}
 
 	return app.QueryForPage(q, criteria.Criteria, (*dto.UserDTO)(nil), nil)
@@ -717,7 +716,6 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 		T.TASK_C_LANE_ID.Matches(oldLaneId),
 		T.TASK_C_POSITION.Greater(oldPosition),
 	).Order(T.TASK_C_POSITION).
-		Asc(true).
 		ListSimple(func() {
 		taskIds = append(taskIds, taskId)
 	}, &taskId)
@@ -761,8 +759,7 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 			Where(
 			T.TASK_C_LANE_ID.Matches(in.LaneId),
 			T.TASK_C_POSITION.GreaterOrMatch(in.Position),
-		).Order(T.TASK_C_POSITION).
-			Asc(false).
+		).Order(T.TASK_C_POSITION).Desc().
 			ListSimple(func() {
 			taskIds = append(taskIds, taskId)
 		}, &taskId)
@@ -934,7 +931,7 @@ func (this *TaskBoardService) FetchNotifications(ctx web.IContext, criteria dto.
 			q.OrderBy(T.LANE_C_NAME)
 		}
 
-		q.Asc(DefBool(criteria.Ascending, true))
+		applyDirection(q, criteria.Criteria)
 	}
 
 	return app.QueryForPage(q, criteria.Criteria, (*entity.Notification)(nil), nil)
@@ -954,6 +951,15 @@ func (this *TaskBoardService) SaveNotification(ctx web.IContext, notification *e
 func (this *TaskBoardService) DeleteNotification(ctx web.IContext, id int64) error {
 	_, err := ctx.(*AppCtx).GetNotificationDAO().DeleteById(id)
 	return err
+}
+
+func applyDirection(q *Query, criteria app.Criteria) {
+	asc := DefBool(criteria.Ascending, true)
+	if asc {
+		q.Asc()
+	} else {
+		q.Desc()
+	}
 }
 
 func canAccessBoard(store IDb, p Principal, boardId int64) error {
