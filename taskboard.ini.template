@@ -1,6 +1,7 @@
 [web]
 dir=./www
 ip_port=:9090
+https_only=false
 # 10MB
 post_limit=10485760
 
