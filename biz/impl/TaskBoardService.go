@@ -74,7 +74,10 @@ func (this *TaskBoardService) broadcastBoardChange(ctx web.IContext, id int64) e
 func boardVersion(store IDb, boardId int64) (int64, error) {
 	// acquires the soft lock version
 	var version int64
-	ok, err := store.Query(T.BOARD).Column(T.BOARD_C_VERSION).Where(T.BOARD_C_ID.Matches(boardId)).SelectInto(&version)
+	ok, err := store.Query(T.BOARD).
+		Column(T.BOARD_C_VERSION).
+		Where(T.BOARD_C_ID.Matches(boardId)).
+		SelectInto(&version)
 	if err != nil {
 		return 0, err
 	}
@@ -87,7 +90,10 @@ func boardVersion(store IDb, boardId int64) (int64, error) {
 func checkBoardVersion(store IDb, boardId int64, version int64) error {
 	// apply lock
 	var affected int64
-	affected, err := store.Update(T.BOARD).Set(T.BOARD_C_VERSION, version+1).Where(T.BOARD_C_ID.Matches(boardId), T.BOARD_C_VERSION.Matches(version)).Execute()
+	affected, err := store.Update(T.BOARD).
+		Set(T.BOARD_C_VERSION, version+1).
+		Where(T.BOARD_C_ID.Matches(boardId), T.BOARD_C_VERSION.Matches(version)).
+		Execute()
 	if err != nil {
 		return err
 	}
@@ -101,7 +107,10 @@ func checkBoardVersion(store IDb, boardId int64, version int64) error {
 func laneVersion(store IDb, laneId int64) (int64, error) {
 	// acquires the soft lock version
 	var version int64
-	ok, err := store.Query(T.LANE).Column(T.LANE_C_VERSION).Where(T.LANE_C_ID.Matches(laneId)).SelectInto(&version)
+	ok, err := store.Query(T.LANE).
+		Column(T.LANE_C_VERSION).
+		Where(T.LANE_C_ID.Matches(laneId)).
+		SelectInto(&version)
 	if err != nil {
 		return 0, err
 	}
@@ -114,7 +123,11 @@ func laneVersion(store IDb, laneId int64) (int64, error) {
 func checkLaneVersion(store IDb, laneId int64, version int64) error {
 	// apply lock
 	var affected int64
-	affected, err := store.Update(T.LANE).Set(T.LANE_C_VERSION, version+1).Where(T.LANE_C_ID.Matches(laneId), T.LANE_C_VERSION.Matches(version)).Execute()
+	affected, err := store.Update(T.LANE).
+		Set(T.LANE_C_VERSION, version+1).
+		Where(
+		T.LANE_C_ID.Matches(laneId), T.LANE_C_VERSION.Matches(version),
+	).Execute()
 	if err != nil {
 		return err
 	}
@@ -132,9 +145,9 @@ func (this *TaskBoardService) FetchBoardUsers(ctx web.IContext, id int64) ([]dto
 	}
 	var u []dto.BoardUserDTO
 	err := app.Store.Query(T.USER).
-		Column(T.USER_C_ID).
-		Column(T.USER_C_NAME).
-		Inner(T.USER_A_BOARDS).On(T.BOARD_C_ID.Matches(id)).Join().
+		Column(T.USER_C_ID, T.USER_C_NAME).
+		Inner(T.USER_A_BOARDS).On(T.BOARD_C_ID.Matches(id)).
+		Join().
 		List(&u)
 	if err != nil {
 		return nil, err
@@ -154,11 +167,11 @@ func (this *TaskBoardService) FetchBoardAllUsers(ctx web.IContext, criteria dto.
 		T.BOARD_USER_C_USERS_ID.Matches(T.USER_C_ID.For("u")),
 	)
 
-	q := store.Query(T.USER).Alias("u").
-		Column(T.USER_C_ID).
-		Column(T.USER_C_VERSION).
-		Column(T.USER_C_NAME).
-		Column(belongs).As("Belongs")
+	q := store.Query(T.USER).Alias("u").Column(
+		T.USER_C_ID,
+		T.USER_C_VERSION,
+		T.USER_C_NAME,
+	).Column(belongs).As("Belongs")
 
 	if !IsEmpty(criteria.Name) {
 		// insenstive case like
@@ -247,21 +260,39 @@ func (this *TaskBoardService) DeleteBoard(ctx web.IContext, id int64) error {
 	myCtx := ctx.(*AppCtx)
 	store := myCtx.Store
 	// delete all notifications
-	subquery := store.Query(T.TASK).Distinct().Column(T.TASK_C_ID).Inner(T.TASK_A_LANE, T.LANE_A_BOARD).On(T.BOARD_C_ID.Matches(id)).Join()
-	if _, err := store.Delete(T.NOTIFICATION).Where(T.NOTIFICATION_C_TASK_ID.In(subquery)).Execute(); err != nil {
+	subquery := store.Query(T.TASK).
+		Distinct().
+		Column(T.TASK_C_ID).
+		Inner(T.TASK_A_LANE, T.LANE_A_BOARD).On(T.BOARD_C_ID.Matches(id)).
+		Join()
+
+	if _, err := store.Delete(T.NOTIFICATION).
+		Where(T.NOTIFICATION_C_TASK_ID.In(subquery)).
+		Execute(); err != nil {
 		return err
 	}
 	// delete all tasks
-	subquery = store.Query(T.LANE).Distinct().Column(T.LANE_C_ID).Inner(T.LANE_A_BOARD).On(T.BOARD_C_ID.Matches(id)).Join()
-	if _, err := store.Delete(T.TASK).Where(T.TASK_C_LANE_ID.In(subquery)).Execute(); err != nil {
+	subquery = store.Query(T.LANE).
+		Distinct().
+		Column(T.LANE_C_ID).
+		Inner(T.LANE_A_BOARD).On(T.BOARD_C_ID.Matches(id)).
+		Join()
+
+	if _, err := store.Delete(T.TASK).
+		Where(T.TASK_C_LANE_ID.In(subquery)).
+		Execute(); err != nil {
 		return err
 	}
 	// delete all lanes
-	if _, err := store.Delete(T.LANE).Where(T.LANE_C_BOARD_ID.Matches(id)).Execute(); err != nil {
+	if _, err := store.Delete(T.LANE).
+		Where(T.LANE_C_BOARD_ID.Matches(id)).
+		Execute(); err != nil {
 		return err
 	}
 	// delete board
-	if _, err := store.Delete(T.BOARD).Where(T.BOARD_C_ID.Matches(id)).Execute(); err != nil {
+	if _, err := store.Delete(T.BOARD).
+		Where(T.BOARD_C_ID.Matches(id)).
+		Execute(); err != nil {
 		return err
 	}
 	// delete Board
@@ -279,10 +310,17 @@ func (this *TaskBoardService) AddLane(ctx web.IContext, boardId int64) error {
 		return err
 	}
 
-	subquery := store.Query(T.LANE).Alias("pos").Column(Add(Coalesce(Max(T.LANE_C_POSITION), 0), 1)).Where(T.LANE_C_BOARD_ID.Matches(boardId))
+	subquery := store.Query(T.LANE).Alias("pos").
+		Column(Add(Coalesce(Max(T.LANE_C_POSITION), 0), 1)).
+		Where(T.LANE_C_BOARD_ID.Matches(boardId))
+
 	_, err = store.Insert(T.LANE).
-		Columns(T.LANE_C_ID, T.LANE_C_VERSION, T.LANE_C_NAME, T.LANE_C_POSITION, T.LANE_C_BOARD_ID).
-		Values(nil, 1, "ChangeMe", subquery, boardId).
+		Columns(T.LANE_C_ID,
+		T.LANE_C_VERSION,
+		T.LANE_C_NAME,
+		T.LANE_C_POSITION,
+		T.LANE_C_BOARD_ID,
+	).Values(nil, 1, "ChangeMe", subquery, boardId).
 		Execute()
 	if err != nil {
 		return err
@@ -344,7 +382,9 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 	if len(lanes) > 1 {
 		previousLane := lanes[1]
 		// remove all notification for the last lane
-		if _, err := store.Delete(T.NOTIFICATION).Where(T.NOTIFICATION_C_LANE_ID.Matches(lastLane.Id)).Execute(); err != nil {
+		if _, err := store.Delete(T.NOTIFICATION).
+			Where(T.NOTIFICATION_C_LANE_ID.Matches(lastLane.Id)).
+			Execute(); err != nil {
 			return err
 		}
 
@@ -364,12 +404,16 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 			return err
 		}
 		// delete all tasks
-		if _, err := store.Delete(T.TASK).Where(T.TASK_C_LANE_ID.Matches(lastLane.Id)).Execute(); err != nil {
+		if _, err := store.Delete(T.TASK).
+			Where(T.TASK_C_LANE_ID.Matches(lastLane.Id)).
+			Execute(); err != nil {
 			return err
 		}
 	}
 	// delete lane
-	if _, err := store.Delete(T.LANE).Where(T.LANE_C_ID.Matches(lastLane.Id)).Execute(); err != nil {
+	if _, err := store.Delete(T.LANE).
+		Where(T.LANE_C_ID.Matches(lastLane.Id)).
+		Execute(); err != nil {
 		return err
 	}
 
@@ -467,12 +511,12 @@ func (this *TaskBoardService) FetchUsers(ctx web.IContext, criteria dto.UserSear
 	)
 
 	// password field not included
-	q := ctx.(*AppCtx).Store.Query(T.USER).Alias("u").
-		Column(T.USER_C_ID).
-		Column(T.USER_C_VERSION).
-		Column(T.USER_C_NAME).
-		Column(T.USER_C_USERNAME).
-		Column(admin).As("Admin")
+	q := ctx.(*AppCtx).Store.Query(T.USER).Alias("u").Column(
+		T.USER_C_ID,
+		T.USER_C_VERSION,
+		T.USER_C_NAME,
+		T.USER_C_USERNAME,
+	).Column(admin).As("Admin")
 	c := T.USER_C_DEAD.Matches(app.NOT_DELETED)
 	if !IsEmpty(criteria.Name) {
 		// insenstive case like
@@ -612,7 +656,10 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 		}
 		*task.Version = *task.Version + 1
 
-		ok, err := store.Query(T.LANE).Column(T.LANE_C_BOARD_ID).Where(T.LANE_C_ID.Matches(task.LaneId)).SelectInto(&boardId)
+		ok, err := store.Query(T.LANE).
+			Column(T.LANE_C_BOARD_ID).
+			Where(T.LANE_C_ID.Matches(task.LaneId)).
+			SelectInto(&boardId)
 		if err != nil {
 			return nil, err
 		}
@@ -628,7 +675,10 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 		}
 
 		var position int64
-		_, err = store.Query(T.TASK).Column(Add(Coalesce(Max(T.TASK_C_POSITION), 0), 1)).Where(T.TASK_C_LANE_ID.Matches(task.LaneId)).SelectInto(&position)
+		_, err = store.Query(T.TASK).
+			Column(Add(Coalesce(Max(T.TASK_C_POSITION), 0), 1)).
+			Where(T.TASK_C_LANE_ID.Matches(task.LaneId)).
+			SelectInto(&position)
 		if err != nil {
 			return nil, err
 		}
@@ -644,7 +694,10 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 		}
 
 		var ok bool
-		ok, err = ctx.(*AppCtx).Store.Query(T.LANE).Column(T.LANE_C_BOARD_ID).Where(T.LANE_C_ID.Matches(task.LaneId)).SelectInto(&boardId)
+		ok, err = ctx.(*AppCtx).Store.Query(T.LANE).
+			Column(T.LANE_C_BOARD_ID).
+			Where(T.LANE_C_ID.Matches(task.LaneId)).
+			SelectInto(&boardId)
 		if err != nil {
 			return nil, err
 		}
@@ -674,11 +727,12 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 	 * ORIGIN LANE
 	 */
 	var oldLaneId, oldPosition int64
-	store.Query(T.TASK).
-		Column(T.TASK_C_LANE_ID).
-		Column(T.TASK_C_POSITION).
-		Where(T.TASK_C_ID.Matches(in.TaskId)).
-		SelectInto(&oldLaneId, &oldPosition)
+	store.Query(T.TASK).Column(
+		T.TASK_C_LANE_ID,
+		T.TASK_C_POSITION,
+	).Where(
+		T.TASK_C_ID.Matches(in.TaskId),
+	).SelectInto(&oldLaneId, &oldPosition)
 
 	// acquires the soft lock version
 	version, err := laneVersion(store, oldLaneId)
@@ -689,11 +743,15 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 	// to delete
 	if in.Position == -1 {
 		// delete all notifications
-		if _, err = store.Delete(T.NOTIFICATION).Where(T.NOTIFICATION_C_TASK_ID.Matches(in.TaskId)).Execute(); err != nil {
+		if _, err = store.Delete(T.NOTIFICATION).
+			Where(T.NOTIFICATION_C_TASK_ID.Matches(in.TaskId)).
+			Execute(); err != nil {
 			return err
 		}
 		// delete task
-		if _, err = store.Delete(T.TASK).Where(T.TASK_C_ID.Matches(in.TaskId)).Execute(); err != nil {
+		if _, err = store.Delete(T.TASK).
+			Where(T.TASK_C_ID.Matches(in.TaskId)).
+			Execute(); err != nil {
 			return err
 		}
 	} else {
@@ -726,9 +784,8 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 	for _, id := range taskIds {
 		_, err = store.Update(T.TASK).
 			Set(T.TASK_C_POSITION, Minus(T.TASK_C_POSITION, AsIs(1))).
-			Where(
-			T.TASK_C_ID.Matches(id),
-		).Execute()
+			Where(T.TASK_C_ID.Matches(id)).
+			Execute()
 		if err != nil {
 			return err
 		}
@@ -770,9 +827,8 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 		for _, id := range taskIds {
 			_, err = store.Update(T.TASK).
 				Set(T.TASK_C_POSITION, Add(T.TASK_C_POSITION, AsIs(1))).
-				Where(
-				T.TASK_C_ID.Matches(id),
-			).Execute()
+				Where(T.TASK_C_ID.Matches(id)).
+				Execute()
 			if err != nil {
 				return err
 			}
@@ -796,7 +852,10 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 
 	var boardId int64
 	var ok bool
-	ok, err = ctx.(*AppCtx).Store.Query(T.LANE).Column(T.LANE_C_BOARD_ID).Where(T.LANE_C_ID.Matches(in.LaneId)).SelectInto(&boardId)
+	ok, err = ctx.(*AppCtx).Store.Query(T.LANE).
+		Column(T.LANE_C_BOARD_ID).
+		Where(T.LANE_C_ID.Matches(in.LaneId)).
+		SelectInto(&boardId)
 	if err != nil {
 		return err
 	}
@@ -917,9 +976,11 @@ func SendMailWithInsecureSkip(addr string, a smtp.Auth, from string, to []string
 // param taskId
 // return
 func (this *TaskBoardService) FetchNotifications(ctx web.IContext, criteria dto.NotificationSearchDTO) (app.Page, error) {
-	q := ctx.(*AppCtx).Store.Query(T.NOTIFICATION).All().
+	q := ctx.(*AppCtx).Store.Query(T.NOTIFICATION).
+		All().
 		Where(T.NOTIFICATION_C_TASK_ID.Matches(criteria.TaskId)).
-		Outer(T.NOTIFICATION_A_LANE).Fetch()
+		Outer(T.NOTIFICATION_A_LANE).
+		Fetch()
 
 	order := criteria.OrderBy
 	if !IsEmpty(order) {
@@ -984,7 +1045,9 @@ func canAccessTask(store IDb, p Principal, boardId int64) error {
 		var id int64
 		store.Query(T.TASK).
 			Column(T.TASK_C_ID).
-			Inner(T.TASK_A_LANE, T.LANE_A_BOARD, T.BOARD_A_USERS).On(T.USER_C_ID.Matches(p.UserId)).Join().
+			Inner(T.TASK_A_LANE, T.LANE_A_BOARD, T.BOARD_A_USERS).
+			On(T.USER_C_ID.Matches(p.UserId)).
+			Join().
 			Where(T.TASK_C_ID.Matches(boardId)).
 			SelectInto(&id)
 		if id == 0 {
