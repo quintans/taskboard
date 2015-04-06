@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/quintans/taskboard/biz/impl"
+	"github.com/quintans/taskboard/go/impl"
 	"github.com/quintans/toolkit/log"
 	"github.com/quintans/toolkit/web"
 
