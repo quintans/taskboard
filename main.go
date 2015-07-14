@@ -6,11 +6,14 @@ import (
 	"github.com/quintans/toolkit/web"
 
 	"net/http"
+	"runtime"
 	"runtime/debug"
 	"time"
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	logger := log.LoggerFor("taskboad")
 
 	startTime := time.Now()
