@@ -5,26 +5,30 @@
 package impl
 
 import (
-	"github.com/quintans/toolkit/web"
-	"github.com/quintans/taskboard/go/service"
 	"net/http"
+
 	"github.com/quintans/goSQL/db"
+	"github.com/quintans/taskboard/go/service"
+	"github.com/quintans/toolkit/web"
 )
 
-func NewAppCtx(w http.ResponseWriter, r *http.Request) *AppCtx {
+func NewAppCtx(
+	w http.ResponseWriter,
+	r *http.Request,
+	taskBoardService service.ITaskBoardService,
+) *AppCtx {
 	this := new(AppCtx)
 	this.Context = new(web.Context)
 	this.Init(this, w, r)
-	this.TaskBoardServiceFactory = NewTaskBoardService
+	this.taskBoardService = taskBoardService
 	return this
 }
 
 type AppCtx struct {
 	*web.Context
-	
-	Store db.IDb
+
+	Store            db.IDb
 	taskBoardService service.ITaskBoardService
-	TaskBoardServiceFactory func(appCtx *AppCtx) service.ITaskBoardService
 }
 
 func (this *AppCtx) AsPrincipal() Principal {
@@ -32,10 +36,6 @@ func (this *AppCtx) AsPrincipal() Principal {
 }
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
-	if this.taskBoardService == nil {
-		// will GC collect this circular reference?? 
-		this.taskBoardService = this.TaskBoardServiceFactory(this)
-	}
 	return this.taskBoardService
 }
 
@@ -58,7 +58,7 @@ func (this *AppCtx) BuildJsonRpc(transaction func(ctx web.IContext) error) *web.
 		}
 		return err
 	}
-	
+
 	svc = json.RegisterAs("taskboard", this.GetTaskBoardService())
 	act = svc.GetAction("WhoAmI")
 	act.PushFilterFunc(transaction, authorize("USER"), jsonpProtection)

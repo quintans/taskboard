@@ -1,8 +1,9 @@
 package impl
 
 import (
-	"bytes"
 	"io"
+	"path/filepath"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/quintans/goSQL/db"
@@ -62,6 +63,8 @@ var (
 	SmtpHost string
 	SmtpPort string
 	SmtpFrom string
+
+	taskBoardService service.ITaskBoardService
 )
 
 var varguard = regexp.MustCompile("\\${[^{}]+}")
@@ -181,12 +184,13 @@ func init() {
 		panic(err)
 	}
 
+	var translator = trx.NewMySQL5Translator()
 	TM = db.NewTransactionManager(
 		// database
 		appDB,
-		// databse context factory
+		// databse context factory - called for each transaction
 		func(inTx *bool, c dbx.IConnection) db.IDb {
-			return db.NewDb(inTx, c, trx.NewMySQL5Translator())
+			return db.NewDb(inTx, c, translator)
 		},
 		// statement cache
 		int(statementCache),
@@ -198,6 +202,8 @@ func init() {
 	 */
 
 	Poll = poller.NewPoller(30 * time.Second)
+
+	taskBoardService = NewTaskBoardService(nil)
 }
 
 func GenerateRandomBytes(n int) ([]byte, error) {
@@ -367,7 +373,7 @@ func NoTransactionFilter(ctx web.IContext) error {
 }
 
 func ContextFactory(w http.ResponseWriter, r *http.Request) web.IContext {
-	return NewAppCtx(w, r)
+	return NewAppCtx(w, r, taskBoardService)
 }
 
 // Gzip Compression
@@ -386,7 +392,15 @@ func isHttps(r *http.Request) bool {
 		r.Header.Get("X-Forwarded-Proto") == "https"
 }
 
-// limits the body of a post, compress response and format eventual errors
+// Create a Pool that contains previously used Writers and
+// can create new ones if we run out.
+var zippers = sync.Pool{New: func() interface{} {
+	return gzip.NewWriter(nil)
+}}
+
+var zipexts = []string{".html", ".js", ".css", ".svg", ".xml"}
+
+// Limit limits the body of a post, compress response and format eventual errors
 func Limit(ctx web.IContext) (err error) {
 	r := ctx.GetRequest()
 	// https only -- redirect in openshift
@@ -400,12 +414,30 @@ func Limit(ctx web.IContext) (err error) {
 	/*
 		Very Important: Before compressing the response, the "Content-Type" header must be properly set!
 	*/
-	if strings.Contains(fmt.Sprint(r.Header["Accept-Encoding"]), "gzip") {
+	// encodes only text files
+	var zip bool
+	var ext = filepath.Ext(r.URL.Path)
+	for _, v := range zipexts {
+		if v == ext {
+			zip = true
+			break
+		}
+	}
+	// TODO gzip encoding should occour only after a size threshold
+	if zip && strings.Contains(fmt.Sprint(r.Header["Accept-Encoding"]), "gzip") {
 		appCtx := ctx.(*AppCtx)
 		w := appCtx.Response
 		w.Header().Set("Content-Encoding", "gzip")
-		gz := gzip.NewWriter(w)
+
+		// Get a Writer from the Pool
+		gz := zippers.Get().(*gzip.Writer)
+		// When done, put the Writer back in to the Pool
+		defer zippers.Put(gz)
+
+		// We use Reset to set the writer we want to use.
+		gz.Reset(w)
 		defer gz.Close()
+
 		appCtx.Response = gzipResponseWriter{Writer: gz, ResponseWriter: w}
 	}
 
@@ -456,41 +488,11 @@ func jsonError(w http.ResponseWriter, code string, msg string) {
 	http.Error(w, fmt.Sprintf(`{"code":"%s", "message":%s}`, code, jmsg), http.StatusInternalServerError)
 }
 
-type MyResponse struct {
-	Body   *bytes.Buffer
-	header http.Header
-	Code   int
-}
-
-func NewMyResponse() *MyResponse {
-	return &MyResponse{
-		Body:   new(bytes.Buffer),
-		header: make(http.Header),
-	}
-}
-
-func (this *MyResponse) Header() http.Header {
-	return this.header
-}
-
-func (this *MyResponse) Write(data []byte) (int, error) {
-	if this.Code == 0 {
-		this.Code = http.StatusOK
-	}
-	return this.Body.Write(data)
-}
-
-func (this *MyResponse) WriteHeader(code int) {
-	this.Code = code
-}
-
-var _ http.ResponseWriter = &MyResponse{}
-
-// buffer the response, permiting setting headers after starting writing the response.
+// ResponseBuffer buffers the response, permiting setting headers after starting writing the response.
 // It also gzips the response if the client browser supports it.
 func ResponseBuffer(ctx web.IContext) error {
 	appCtx := ctx.(*AppCtx)
-	rec := NewMyResponse()
+	rec := web.NewBufferedResponse()
 	w := appCtx.Response
 	// passing a buffer instead of the original RW
 	appCtx.Response = rec
@@ -500,16 +502,7 @@ func ResponseBuffer(ctx web.IContext) error {
 	}()
 	err := ctx.Proceed()
 	if err == nil {
-		// we copy the original headers first
-		for k, v := range rec.Header() {
-			w.Header()[k] = v
-		}
-
-		// status code
-		w.WriteHeader(rec.Code)
-
-		// then write out the original body
-		w.Write(rec.Body.Bytes())
+		rec.Flush(w)
 	}
 
 	return err
