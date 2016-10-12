@@ -5,8 +5,8 @@
 package entity;
 import (
 	"github.com/quintans/toolkit"
-	"github.com/quintans/toolkit/ext"
 	"github.com/quintans/toolkit/web/app"
+	"github.com/quintans/toolkit/ext"
 )
 
 var _ toolkit.Hasher = &Lane{}
@@ -32,11 +32,6 @@ type Lane struct {
 	Notifications []*Notification `json:"notifications"`
 }
 
-func (this *Lane) SetName(name *string) {
-	this.Name = name
-	this.Mark("Name")
-}
-
 func (this *Lane) SetBoardId(boardId *int64) {
 	this.BoardId = boardId
 	this.Mark("BoardId")
@@ -45,6 +40,11 @@ func (this *Lane) SetBoardId(boardId *int64) {
 func (this *Lane) SetPosition(position *int64) {
 	this.Position = position
 	this.Mark("Position")
+}
+
+func (this *Lane) SetName(name *string) {
+	this.Name = name
+	this.Mark("Name")
 }
 
 func (this *Lane) Clone() interface{} {

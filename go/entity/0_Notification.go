@@ -34,14 +34,14 @@ func (this *Notification) SetEmail(email string) {
 	this.Mark("Email")
 }
 
-func (this *Notification) SetLaneId(laneId int64) {
-	this.LaneId = laneId
-	this.Mark("LaneId")
-}
-
 func (this *Notification) SetTaskId(taskId int64) {
 	this.TaskId = taskId
 	this.Mark("TaskId")
+}
+
+func (this *Notification) SetLaneId(laneId int64) {
+	this.LaneId = laneId
+	this.Mark("LaneId")
 }
 
 func (this *Notification) Clone() interface{} {

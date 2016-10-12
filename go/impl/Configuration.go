@@ -20,6 +20,7 @@ import (
 
 	"github.com/quintans/taskboard/go/entity"
 	"github.com/quintans/taskboard/go/lov"
+	"github.com/quintans/taskboard/go/service"
 	T "github.com/quintans/taskboard/go/tables"
 
 	"compress/gzip"
@@ -264,6 +265,28 @@ func deserializePrincipal(r *http.Request) *Principal {
 	}
 }
 
+func TransactionFilter(ctx web.IContext) error {
+	return TM.Transaction(func(DB db.IDb) error {
+		appCtx := ctx.(*AppCtx)
+		appCtx.Store = DB
+		p := ctx.GetPrincipal()
+		if p != nil {
+			appCtx.Store.SetAttribute(entity.ATTR_USERID, p.(Principal).UserId)
+		}
+
+		return ctx.Proceed()
+	})
+}
+
+func NoTransactionFilter(ctx web.IContext) error {
+	return TM.NoTransaction(func(DB db.IDb) error {
+		appCtx := ctx.(*AppCtx)
+		appCtx.Store = DB
+
+		return ctx.Proceed()
+	})
+}
+
 func PingFilter(ctx web.IContext) error {
 	ctx.GetResponse().Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -311,9 +334,9 @@ func LoginFilter(ctx web.IContext) error {
 			All().
 			Inner(T.USER_A_ROLES).Fetch().
 			Where(
-			db.And(T.USER_C_USERNAME.Matches(username),
-				T.USER_C_DEAD.Matches(app.NOT_DELETED),
-				T.USER_C_PASSWORD.Matches(pass))).
+				db.And(T.USER_C_USERNAME.Matches(username),
+					T.USER_C_DEAD.Matches(app.NOT_DELETED),
+					T.USER_C_PASSWORD.Matches(pass))).
 			SelectTree(&user); ok && err == nil {
 			// role array
 			roles := make([]lov.ERole, len(user.Roles))
@@ -348,28 +371,6 @@ func AuthenticationFilter(ctx web.IContext) error {
 	}
 
 	return nil
-}
-
-func TransactionFilter(ctx web.IContext) error {
-	return TM.Transaction(func(DB db.IDb) error {
-		appCtx := ctx.(*AppCtx)
-		appCtx.Store = DB
-		p := ctx.GetPrincipal()
-		if p != nil {
-			appCtx.Store.SetAttribute(entity.ATTR_USERID, p.(Principal).UserId)
-		}
-
-		return ctx.Proceed()
-	})
-}
-
-func NoTransactionFilter(ctx web.IContext) error {
-	return TM.NoTransaction(func(DB db.IDb) error {
-		appCtx := ctx.(*AppCtx)
-		appCtx.Store = DB
-
-		return ctx.Proceed()
-	})
 }
 
 func ContextFactory(w http.ResponseWriter, r *http.Request) web.IContext {

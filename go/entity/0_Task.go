@@ -5,8 +5,8 @@
 package entity;
 import (
 	"github.com/quintans/toolkit"
-	"github.com/quintans/toolkit/ext"
 	"github.com/quintans/toolkit/web/app"
+	"github.com/quintans/toolkit/ext"
 )
 
 var _ toolkit.Hasher = &Task{}
@@ -36,24 +36,9 @@ type Task struct {
 	Notifications []*Notification `json:"notifications"`
 }
 
-func (this *Task) SetDetail(detail *string) {
-	this.Detail = detail
-	this.Mark("Detail")
-}
-
 func (this *Task) SetBodyColor(bodyColor *string) {
 	this.BodyColor = bodyColor
 	this.Mark("BodyColor")
-}
-
-func (this *Task) SetHeadColor(headColor *string) {
-	this.HeadColor = headColor
-	this.Mark("HeadColor")
-}
-
-func (this *Task) SetLaneId(laneId *int64) {
-	this.LaneId = laneId
-	this.Mark("LaneId")
 }
 
 func (this *Task) SetPosition(position *int64) {
@@ -66,9 +51,24 @@ func (this *Task) SetUserId(userId *int64) {
 	this.Mark("UserId")
 }
 
+func (this *Task) SetHeadColor(headColor *string) {
+	this.HeadColor = headColor
+	this.Mark("HeadColor")
+}
+
 func (this *Task) SetTitle(title *string) {
 	this.Title = title
 	this.Mark("Title")
+}
+
+func (this *Task) SetLaneId(laneId *int64) {
+	this.LaneId = laneId
+	this.Mark("LaneId")
+}
+
+func (this *Task) SetDetail(detail *string) {
+	this.Detail = detail
+	this.Mark("Detail")
 }
 
 func (this *Task) Clone() interface{} {

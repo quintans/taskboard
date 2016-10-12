@@ -5,8 +5,8 @@
 package entity;
 import (
 	"github.com/quintans/toolkit"
-	"github.com/quintans/toolkit/ext"
 	"github.com/quintans/toolkit/web/app"
+	"github.com/quintans/toolkit/ext"
 )
 
 var _ toolkit.Hasher = &User{}
@@ -33,9 +33,9 @@ type User struct {
 	Tasks []*Task `json:"tasks"`
 }
 
-func (this *User) SetName(name *string) {
-	this.Name = name
-	this.Mark("Name")
+func (this *User) SetDead(dead int64) {
+	this.Dead = dead
+	this.Mark("Dead")
 }
 
 func (this *User) SetUsername(username *string) {
@@ -43,14 +43,14 @@ func (this *User) SetUsername(username *string) {
 	this.Mark("Username")
 }
 
+func (this *User) SetName(name *string) {
+	this.Name = name
+	this.Mark("Name")
+}
+
 func (this *User) SetPassword(password *string) {
 	this.Password = password
 	this.Mark("Password")
-}
-
-func (this *User) SetDead(dead int64) {
-	this.Dead = dead
-	this.Mark("Dead")
 }
 
 func (this *User) Clone() interface{} {

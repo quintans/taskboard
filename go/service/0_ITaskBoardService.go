@@ -5,9 +5,9 @@
 package service;
 
 import (
+	"github.com/quintans/taskboard/go/dto"
 	"github.com/quintans/taskboard/go/entity"
 	"github.com/quintans/toolkit/web"
-	"github.com/quintans/taskboard/go/dto"
 	"github.com/quintans/toolkit/web/app"
 )
 
