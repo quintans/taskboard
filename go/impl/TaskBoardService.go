@@ -41,13 +41,13 @@ func NewTaskBoardService(appCtx *AppCtx) service.ITaskBoardService {
 type TaskBoardService struct {
 }
 
-func (this *TaskBoardService) WhoAmI(ctx web.IContext) (dto.IdentityDTO, error) {
-	p := ctx.GetPrincipal().(Principal)
+func (this *TaskBoardService) WhoAmI(c web.IContext) (dto.IdentityDTO, error) {
+	ctx := c.(*AppCtx)
+	p := ctx.Principal
 	identity := dto.IdentityDTO{}
 	identity.Id = &p.UserId
-	app := ctx.(*AppCtx)
 	var name string
-	app.Store.Query(T.USER).Column(T.USER_C_NAME).
+	ctx.Store.Query(T.USER).Column(T.USER_C_NAME).
 		Where(T.USER_C_ID.Matches(p.UserId)).
 		SelectInto(&name)
 	identity.Name = &name
@@ -126,8 +126,8 @@ func checkLaneVersion(store IDb, laneId int64, version int64) error {
 	affected, err := store.Update(T.LANE).
 		Set(T.LANE_C_VERSION, version+1).
 		Where(
-		T.LANE_C_ID.Matches(laneId), T.LANE_C_VERSION.Matches(version),
-	).Execute()
+			T.LANE_C_ID.Matches(laneId), T.LANE_C_VERSION.Matches(version),
+		).Execute()
 	if err != nil {
 		return err
 	}
@@ -138,13 +138,13 @@ func checkLaneVersion(store IDb, laneId int64, version int64) error {
 	return nil
 }
 
-func (this *TaskBoardService) FetchBoardUsers(ctx web.IContext, id int64) ([]dto.BoardUserDTO, error) {
-	app := ctx.(*AppCtx)
-	if err := canAccessBoard(app.Store, app.AsPrincipal(), id); err != nil {
+func (this *TaskBoardService) FetchBoardUsers(c web.IContext, id int64) ([]dto.BoardUserDTO, error) {
+	ctx := c.(*AppCtx)
+	if err := canAccessBoard(ctx.Store, ctx.Principal, id); err != nil {
 		return nil, err
 	}
 	var u []dto.BoardUserDTO
-	err := app.Store.Query(T.USER).
+	err := ctx.Store.Query(T.USER).
 		Column(T.USER_C_ID, T.USER_C_NAME).
 		Inner(T.USER_A_BOARDS).On(T.BOARD_C_ID.Matches(id)).
 		Join().
@@ -158,14 +158,14 @@ func (this *TaskBoardService) FetchBoardUsers(ctx web.IContext, id int64) ([]dto
 
 // param criteria
 // return
-func (this *TaskBoardService) FetchBoardAllUsers(ctx web.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error) {
-	store := ctx.(*AppCtx).Store
+func (this *TaskBoardService) FetchBoardAllUsers(c web.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error) {
+	store := c.(*AppCtx).Store
 	belongs := store.Query(T.BOARD_USER).Alias("b").
 		CountAll().
 		Where(
-		T.BOARD_USER_C_BOARDS_ID.Matches(criteria.BoardId),
-		T.BOARD_USER_C_USERS_ID.Matches(T.USER_C_ID.For("u")),
-	)
+			T.BOARD_USER_C_BOARDS_ID.Matches(criteria.BoardId),
+			T.BOARD_USER_C_USERS_ID.Matches(T.USER_C_ID.For("u")),
+		)
 
 	q := store.Query(T.USER).Alias("u").Column(
 		T.USER_C_ID,
@@ -191,9 +191,10 @@ func (this *TaskBoardService) FetchBoardAllUsers(ctx web.IContext, criteria dto.
 
 // param criteria
 // return
-func (this *TaskBoardService) FetchBoards(ctx web.IContext, criteria dto.BoardSearchDTO) (app.Page, error) {
-	q := ctx.(*AppCtx).Store.Query(T.BOARD).All()
-	p := ctx.GetPrincipal().(Principal)
+func (this *TaskBoardService) FetchBoards(c web.IContext, criteria dto.BoardSearchDTO) (app.Page, error) {
+	var ctx = c.(*AppCtx)
+	q := ctx.Store.Query(T.BOARD).All()
+	p := ctx.Principal
 	// if not admin restrict to boards that the user has access
 	if !p.HasRole(lov.ERole_ADMIN) {
 		q.Inner(T.BOARD_A_USERS).On(T.USER_C_ID.Matches(p.UserId)).Join()
@@ -217,25 +218,25 @@ func (this *TaskBoardService) FetchBoards(ctx web.IContext, criteria dto.BoardSe
 
 // param id
 // return
-func (this *TaskBoardService) FetchBoardById(ctx web.IContext, id int64) (*entity.Board, error) {
-	app := ctx.(*AppCtx)
-	if err := canAccessBoard(app.Store, app.AsPrincipal(), id); err != nil {
+func (this *TaskBoardService) FetchBoardById(c web.IContext, id int64) (*entity.Board, error) {
+	ctx := c.(*AppCtx)
+	if err := canAccessBoard(ctx.Store, ctx.Principal, id); err != nil {
 		return nil, err
 	}
 
 	b := new(entity.Board)
-	app.Store.Retrive(b, id)
+	ctx.Store.Retrive(b, id)
 	return b, nil
 }
 
-func (this *TaskBoardService) FullyLoadBoardById(ctx web.IContext, id int64) (*entity.Board, error) {
-	app := ctx.(*AppCtx)
-	if err := canAccessBoard(app.Store, app.AsPrincipal(), id); err != nil {
+func (this *TaskBoardService) FullyLoadBoardById(c web.IContext, id int64) (*entity.Board, error) {
+	ctx := c.(*AppCtx)
+	if err := canAccessBoard(ctx.Store, ctx.Principal, id); err != nil {
 		return nil, err
 	}
 
 	var board = new(entity.Board)
-	if _, err := app.Store.Query(T.BOARD).All().
+	if _, err := ctx.Store.Query(T.BOARD).All().
 		Outer(T.BOARD_A_LANES).OrderBy(T.LANE_C_POSITION).
 		Outer(T.LANE_A_TASKS).OrderBy(T.TASK_C_POSITION).
 		Outer(T.TASK_A_USER).Include(T.USER_C_ID, T.USER_C_NAME).
@@ -318,11 +319,11 @@ func (this *TaskBoardService) AddLane(ctx web.IContext, boardId int64) error {
 
 	_, err = store.Insert(T.LANE).
 		Columns(T.LANE_C_ID,
-		T.LANE_C_VERSION,
-		T.LANE_C_NAME,
-		T.LANE_C_POSITION,
-		T.LANE_C_BOARD_ID,
-	).Values(nil, 1, "ChangeMe", subquery, boardId).
+			T.LANE_C_VERSION,
+			T.LANE_C_NAME,
+			T.LANE_C_POSITION,
+			T.LANE_C_BOARD_ID,
+		).Values(nil, 1, "ChangeMe", subquery, boardId).
 		Execute()
 	if err != nil {
 		return err
@@ -430,8 +431,9 @@ func (this *TaskBoardService) DeleteLastLane(ctx web.IContext, boardId int64) er
 
 // param user
 // return
-func (this *TaskBoardService) SaveUser(ctx web.IContext, user dto.UserDTO) (bool, error) {
-	store := ctx.(*AppCtx).Store
+func (this *TaskBoardService) SaveUser(c web.IContext, user dto.UserDTO) (bool, error) {
+	var ctx = c.(*AppCtx)
+	store := ctx.Store
 	if user.Id == nil {
 		id, err := store.Insert(T.USER).
 			Set(T.USER_C_VERSION, 1).
@@ -463,8 +465,8 @@ func (this *TaskBoardService) SaveUser(ctx web.IContext, user dto.UserDTO) (bool
 			Set(T.USER_C_NAME, user.Name).
 			Set(T.USER_C_USERNAME, user.Username).
 			Where(T.USER_C_ID.Matches(*user.Id).
-			And(T.USER_C_VERSION.Matches(*user.Version).
-			And(T.USER_C_DEAD.Matches(app.NOT_DELETED))))
+				And(T.USER_C_VERSION.Matches(*user.Version).
+					And(T.USER_C_DEAD.Matches(app.NOT_DELETED))))
 		if user.Password != nil {
 			dml.Set(T.USER_C_PASSWORD, user.Password)
 		}
@@ -489,7 +491,7 @@ func (this *TaskBoardService) SaveUser(ctx web.IContext, user dto.UserDTO) (bool
 		} else if !user.Admin && cnt != 0 {
 			// no longer admin
 			// if I am the admin, cannot remove myself from admin
-			p := ctx.GetPrincipal().(Principal)
+			p := ctx.Principal
 			if p.UserId != *user.Id {
 				store.Delete(T.ROLE).
 					Where(criteria).
@@ -508,12 +510,12 @@ func (this *TaskBoardService) FetchUsers(ctx web.IContext, criteria dto.UserSear
 	admin := store.Query(T.ROLE).Alias("r").
 		CountAll().
 		Where(
-		T.ROLE_C_USER_ID.Matches(T.USER_C_ID.For("u")),
-		T.ROLE_C_KIND.Matches(lov.ERole_ADMIN),
-	)
+			T.ROLE_C_USER_ID.Matches(T.USER_C_ID.For("u")),
+			T.ROLE_C_KIND.Matches(lov.ERole_ADMIN),
+		)
 
 	// password field not included
-	q := ctx.(*AppCtx).Store.Query(T.USER).Alias("u").Column(
+	q := store.Query(T.USER).Alias("u").Column(
 		T.USER_C_ID,
 		T.USER_C_VERSION,
 		T.USER_C_NAME,
@@ -541,8 +543,8 @@ func (this *TaskBoardService) FetchUsers(ctx web.IContext, criteria dto.UserSear
 
 // param userId
 // return
-func (this *TaskBoardService) DisableUser(ctx web.IContext, iv dto.IdVersionDTO) error {
-	return app.SoftDeleteByIdAndVersion(ctx.(*AppCtx).Store, T.USER, *iv.Id, *iv.Version)
+func (this *TaskBoardService) DisableUser(c web.IContext, iv dto.IdVersionDTO) error {
+	return app.SoftDeleteByIdAndVersion(c.(*AppCtx).Store, T.USER, *iv.Id, *iv.Version)
 }
 
 // param boardId
@@ -566,7 +568,7 @@ func (this *TaskBoardService) RemoveUserFromBoard(ctx web.IContext, input servic
 	var err error
 	_, err = store.Delete(T.BOARD_USER).
 		Where(T.BOARD_USER_C_BOARDS_ID.Matches(input.BoardId).
-		And(T.BOARD_USER_C_USERS_ID.Matches(input.UserId))).
+			And(T.BOARD_USER_C_USERS_ID.Matches(input.UserId))).
 		Execute()
 
 	return err
@@ -574,11 +576,11 @@ func (this *TaskBoardService) RemoveUserFromBoard(ctx web.IContext, input servic
 
 // param name
 // return
-func (this *TaskBoardService) SaveUserName(ctx web.IContext, name *string) error {
-	myCtx := ctx.(*AppCtx)
-	store := myCtx.Store
+func (this *TaskBoardService) SaveUserName(c web.IContext, name *string) error {
+	ctx := c.(*AppCtx)
+	store := ctx.Store
 
-	p := myCtx.GetPrincipal().(Principal)
+	p := ctx.Principal
 
 	var err error
 	_, err = store.Update(T.USER).
@@ -592,20 +594,20 @@ func (this *TaskBoardService) SaveUserName(ctx web.IContext, name *string) error
 // param oldPwd
 // param newPwd
 // return
-func (this *TaskBoardService) ChangeUserPassword(ctx web.IContext, input service.ChangeUserPasswordIn) (string, error) {
-	myCtx := ctx.(*AppCtx)
-	store := myCtx.Store
+func (this *TaskBoardService) ChangeUserPassword(c web.IContext, input service.ChangeUserPasswordIn) (string, error) {
+	ctx := c.(*AppCtx)
+	store := ctx.Store
 
-	p := myCtx.GetPrincipal().(Principal)
+	p := ctx.Principal
 
 	r, err := store.Update(T.USER).
 		Set(T.USER_C_PASSWORD, input.NewPwd).
 		Set(T.USER_C_VERSION, p.Version+1).
 		Where(
-		And(T.USER_C_ID.Matches(p.UserId),
-			T.USER_C_VERSION.Matches(p.Version),
-			T.USER_C_PASSWORD.Matches(input.OldPwd)),
-	).
+			And(T.USER_C_ID.Matches(p.UserId),
+				T.USER_C_VERSION.Matches(p.Version),
+				T.USER_C_PASSWORD.Matches(input.OldPwd)),
+		).
 		Execute()
 
 	if err == nil && r > 0 {
@@ -618,13 +620,13 @@ func (this *TaskBoardService) ChangeUserPassword(ctx web.IContext, input service
 
 // param task
 // return
-func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*entity.Task, error) {
-	app := ctx.(*AppCtx)
-	store := app.Store
+func (this *TaskBoardService) SaveTask(c web.IContext, task *entity.Task) (*entity.Task, error) {
+	ctx := c.(*AppCtx)
+	store := ctx.Store
 
 	var boardId int64
 	if task.Id != nil {
-		if err := canAccessTask(store, app.AsPrincipal(), *task.Id); err != nil {
+		if err := canAccessTask(store, ctx.Principal, *task.Id); err != nil {
 			return nil, err
 		}
 
@@ -685,7 +687,7 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 			return nil, err
 		}
 		task.Position = Int64(position)
-		if _, err := ctx.(*AppCtx).Store.Save(task); err != nil {
+		if _, err := store.Save(task); err != nil {
 			return nil, err
 		}
 
@@ -696,7 +698,7 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 		}
 
 		var ok bool
-		ok, err = ctx.(*AppCtx).Store.Query(T.LANE).
+		ok, err = store.Query(T.LANE).
 			Column(T.LANE_C_BOARD_ID).
 			Where(T.LANE_C_ID.Matches(task.LaneId)).
 			SelectInto(&boardId)
@@ -718,10 +720,10 @@ func (this *TaskBoardService) SaveTask(ctx web.IContext, task *entity.Task) (*en
 
 // param idVersion
 // return
-func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) error {
-	app := ctx.(*AppCtx)
-	store := app.Store
-	if err := canAccessTask(store, app.AsPrincipal(), in.TaskId); err != nil {
+func (this *TaskBoardService) MoveTask(c web.IContext, in service.MoveTaskIn) error {
+	ctx := c.(*AppCtx)
+	store := ctx.Store
+	if err := canAccessTask(store, ctx.Principal, in.TaskId); err != nil {
 		return err
 	}
 
@@ -773,12 +775,12 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 	err = store.Query(T.TASK).
 		Column(T.TASK_C_ID).
 		Where(
-		T.TASK_C_LANE_ID.Matches(oldLaneId),
-		T.TASK_C_POSITION.Greater(oldPosition),
-	).Order(T.TASK_C_POSITION).
+			T.TASK_C_LANE_ID.Matches(oldLaneId),
+			T.TASK_C_POSITION.Greater(oldPosition),
+		).Order(T.TASK_C_POSITION).
 		ListSimple(func() {
-		taskIds = append(taskIds, taskId)
-	}, &taskId)
+			taskIds = append(taskIds, taskId)
+		}, &taskId)
 	if err != nil {
 		return err
 	}
@@ -816,12 +818,12 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 		err = store.Query(T.TASK).
 			Column(T.TASK_C_ID).
 			Where(
-			T.TASK_C_LANE_ID.Matches(in.LaneId),
-			T.TASK_C_POSITION.GreaterOrMatch(in.Position),
-		).Order(T.TASK_C_POSITION).Desc().
+				T.TASK_C_LANE_ID.Matches(in.LaneId),
+				T.TASK_C_POSITION.GreaterOrMatch(in.Position),
+			).Order(T.TASK_C_POSITION).Desc().
 			ListSimple(func() {
-			taskIds = append(taskIds, taskId)
-		}, &taskId)
+				taskIds = append(taskIds, taskId)
+			}, &taskId)
 		if err != nil {
 			return err
 		}
@@ -854,7 +856,7 @@ func (this *TaskBoardService) MoveTask(ctx web.IContext, in service.MoveTaskIn) 
 
 	var boardId int64
 	var ok bool
-	ok, err = ctx.(*AppCtx).Store.Query(T.LANE).
+	ok, err = store.Query(T.LANE).
 		Column(T.LANE_C_BOARD_ID).
 		Where(T.LANE_C_ID.Matches(in.LaneId)).
 		SelectInto(&boardId)
@@ -977,8 +979,8 @@ func SendMailWithInsecureSkip(addr string, a smtp.Auth, from string, to []string
 
 // param taskId
 // return
-func (this *TaskBoardService) FetchNotifications(ctx web.IContext, criteria dto.NotificationSearchDTO) (app.Page, error) {
-	q := ctx.(*AppCtx).Store.Query(T.NOTIFICATION).
+func (this *TaskBoardService) FetchNotifications(c web.IContext, criteria dto.NotificationSearchDTO) (app.Page, error) {
+	q := c.(*AppCtx).Store.Query(T.NOTIFICATION).
 		All().
 		Where(T.NOTIFICATION_C_TASK_ID.Matches(criteria.TaskId)).
 		Outer(T.NOTIFICATION_A_LANE).
@@ -1028,15 +1030,15 @@ func applyDirection(q *Query, criteria app.Criteria) {
 	}
 }
 
-func canAccessBoard(store IDb, p Principal, boardId int64) error {
+func canAccessBoard(store IDb, p *Principal, boardId int64) error {
 	if !p.HasRole(lov.ERole_ADMIN) {
 		var id int64
 		store.Query(T.BOARD_USER).
 			Column(T.BOARD_USER_C_BOARDS_ID).
 			Where(
-			T.BOARD_USER_C_BOARDS_ID.Matches(boardId),
-			T.BOARD_USER_C_USERS_ID.Matches(p.UserId),
-		).
+				T.BOARD_USER_C_BOARDS_ID.Matches(boardId),
+				T.BOARD_USER_C_USERS_ID.Matches(p.UserId),
+			).
 			SelectInto(&id)
 		if id == 0 {
 			return errors.New("You do not have access to this board!")
@@ -1045,7 +1047,7 @@ func canAccessBoard(store IDb, p Principal, boardId int64) error {
 	return nil
 }
 
-func canAccessTask(store IDb, p Principal, boardId int64) error {
+func canAccessTask(store IDb, p *Principal, boardId int64) error {
 	if !p.HasRole(lov.ERole_ADMIN) {
 		var id int64
 		store.Query(T.TASK).

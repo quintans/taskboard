@@ -27,12 +27,9 @@ func NewAppCtx(
 type AppCtx struct {
 	*web.Context
 
+	Principal        *Principal
 	Store            db.IDb
 	taskBoardService service.ITaskBoardService
-}
-
-func (this *AppCtx) AsPrincipal() Principal {
-	return this.Principal.(Principal)
 }
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
@@ -83,7 +80,7 @@ func jsonpProtection(ctx web.IContext) error {
 
 func authorize(roles ...string) func(ctx web.IContext) error {
 	return func(ctx web.IContext) error {
-		user := ctx.GetPrincipal().(Principal)
+		user := ctx.(*AppCtx).Principal
 		for _, r := range roles {
 			for _, role := range user.Roles {
 				if r == string(role) {

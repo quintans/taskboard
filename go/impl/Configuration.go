@@ -225,7 +225,7 @@ type Principal struct {
 	Version  int64
 }
 
-func (this Principal) HasRole(role lov.ERole) bool {
+func (this *Principal) HasRole(role lov.ERole) bool {
 	for _, r := range this.Roles {
 		if r == role {
 			return true
@@ -240,8 +240,8 @@ func KeyFunction(token *jwt.Token) (interface{}, error) {
 	return secret, nil
 }
 
-func serializePrincipal(p Principal) (string, error) {
-	principal, err := json.Marshal(p)
+func serializePrincipal(p *Principal) (string, error) {
+	principal, err := json.Marshal(*p)
 	if err != nil {
 		return "", err
 	}
@@ -269,9 +269,9 @@ func TransactionFilter(ctx web.IContext) error {
 	return TM.Transaction(func(DB db.IDb) error {
 		appCtx := ctx.(*AppCtx)
 		appCtx.Store = DB
-		p := ctx.GetPrincipal()
+		p := appCtx.Principal
 		if p != nil {
-			appCtx.Store.SetAttribute(entity.ATTR_USERID, p.(Principal).UserId)
+			appCtx.Store.SetAttribute(entity.ATTR_USERID, p.UserId)
 		}
 
 		return ctx.Proceed()
@@ -293,10 +293,11 @@ func PingFilter(ctx web.IContext) error {
 	// TODO what happens if this is called right after the user submited a password change
 	// and the reply was not yet delivered/processed
 
-	p := ctx.GetPrincipal().(Principal)
+	app := ctx.(*AppCtx)
+	p := app.Principal
 	// check if version is valid - if the user changed the password the version changes
 	var uid int64
-	store := ctx.(*AppCtx).Store
+	store := app.Store
 	ok, err := store.Query(T.USER).Column(T.USER_C_ID).
 		Where(T.USER_C_ID.Matches(p.UserId).And(T.USER_C_VERSION.Matches(p.Version))).
 		SelectInto(&uid)
@@ -343,7 +344,7 @@ func LoginFilter(ctx web.IContext) error {
 			for k, v := range user.Roles {
 				roles[k] = v.Kind
 			}
-			tokenString, err := serializePrincipal(Principal{
+			tokenString, err := serializePrincipal(&Principal{
 				*user.Id,
 				*user.Username,
 				roles,
@@ -363,7 +364,7 @@ func AuthenticationFilter(ctx web.IContext) error {
 	p := deserializePrincipal(ctx.GetRequest())
 	if p != nil {
 		// for authorizations and business logic
-		ctx.(*AppCtx).SetPrincipal(*p)
+		ctx.(*AppCtx).Principal = p
 		return ctx.Proceed()
 	} else {
 		logger.Debugf("Unable to proceed: invalid token!")
