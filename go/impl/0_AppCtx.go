@@ -7,13 +7,14 @@ package impl
 import (
 	"encoding/json"
 	"net/http"
-	"github.com/quintans/toolkit/web"
+
 	"github.com/quintans/goSQL/db"
 	"github.com/quintans/taskboard/go/service"
+	"github.com/quintans/toolkit/web"
 )
 
 func NewAppCtx(
-	w http.ResponseWriter, 
+	w http.ResponseWriter,
 	r *http.Request,
 	filters []*web.Filter,
 	taskBoardService service.ITaskBoardService,
@@ -29,12 +30,11 @@ var _ web.IContext = &AppCtx{}
 
 type AppCtx struct {
 	*web.Context
-	
-	Principal *Principal
-	Store db.IDb
+
+	Principal        *Principal
+	Store            db.IDb
 	taskBoardService service.ITaskBoardService
 }
-
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
 	return this.taskBoardService
@@ -80,10 +80,12 @@ func (this *AppCtx) Reply(value interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = this.Response.Write([]byte(")]}',\n" + string(result)))
+	if _, err = this.Response.Write([]byte(")]}',\n")); err != nil {
+		return err
+	}
+	_, err = this.Response.Write(result)
 	return err
 }
-
 
 func authorize(roles ...string) func(ctx web.IContext) error {
 	return func(ctx web.IContext) error {
