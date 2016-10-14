@@ -3,11 +3,10 @@
 /// <reference path="typings/bootstrap/bootstrap.d.ts"/>
 /// <reference path="infra.ts"/>
 /// <reference path="app.ts"/>
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var EVENT_LOGIN_REQUIRED = "event:loginRequired";
 var EVENT_LOGIN_REQUEST = "event:loginRequest";
@@ -21,7 +20,8 @@ var PAGESIZE_SMALL = 5;
 var PAGESIZE_MEDIUM = 10;
 var PAGESIZE_BIG = 15;
 ;
-function AppCtrl($rootScope, $scope, $location, $window, taskBoardService, $localStorage, $http, $interval) {
+angular.module('taskboard')
+    .controller('AppCtrl', function ($rootScope, $scope, $location, $window, taskBoardService, $localStorage, $http, $interval) {
     $scope.hasRole = function (role) {
         if ($scope.identity && $scope.identity.roles) {
             var roles = $scope.identity.roles;
@@ -42,7 +42,8 @@ function AppCtrl($rootScope, $scope, $location, $window, taskBoardService, $loca
         }
         if (!visible) {
             refreshToken = $interval(function () {
-                $http.post("ping", "").success(function (data) {
+                $http.post("ping", "")
+                    .success(function (data) {
                     if (data !== "") {
                         $localStorage.jwtToken = data;
                     }
@@ -222,7 +223,7 @@ function AppCtrl($rootScope, $scope, $location, $window, taskBoardService, $loca
             $scope.$broadcast(BOARD_DELCOLUMN);
         }
     };
-}
+});
 function BoardCtrl($scope, $routeParams, taskBoardService) {
     $scope.colorOptions = [
         '#FFFFFF',
@@ -262,6 +263,7 @@ function BoardCtrl($scope, $routeParams, taskBoardService) {
                     if (lane.tasks != null) {
                         for (var t = 0; t < lane.tasks.length; t++) {
                             var task = lane.tasks[t];
+                            // only tasks still present in the board will be collected
                             for (var x = 0; x < expandedTasks.length; x++) {
                                 if (expandedTasks[x] === task.id) {
                                     expanded.push(expandedTasks[x]);
@@ -463,7 +465,7 @@ var UserEdit = (function (_super) {
         _super.apply(this, arguments);
     }
     return UserEdit;
-})(taskboard.UserDTO);
+}(taskboard.UserDTO));
 function UsersCtrl($scope, taskBoardService) {
     $scope.criteria = new taskboard.UserSearchDTO();
     $scope.criteria.pageSize = PAGESIZE_BIG;
@@ -516,7 +518,8 @@ function UsersCtrl($scope, taskBoardService) {
     };
     $scope.disableUser = function (user) {
         var iv = new taskboard.IdVersionDTO();
-        iv.id = user.id, iv.version = user.version;
+        iv.id = user.id,
+            iv.version = user.version;
         taskBoardService.disableUser(iv, function () {
             $scope.gridProvider.refresh();
         });

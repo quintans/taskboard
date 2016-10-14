@@ -1,10 +1,9 @@
 /// <reference path="typings/angularjs/angular.d.ts"/>
 /// <reference path="toolkit.ts"/>
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 /**
  * WARNING: Generated code. Changes will be overwritten.
@@ -35,7 +34,7 @@ var taskboard;
             return this;
         };
         return EntityBase;
-    })();
+    }());
     taskboard.EntityBase = EntityBase;
     var Board = (function (_super) {
         __extends(Board, _super);
@@ -56,7 +55,7 @@ var taskboard;
             return this;
         };
         return Board;
-    })(EntityBase);
+    }(EntityBase));
     taskboard.Board = Board;
     var Lane = (function (_super) {
         __extends(Lane, _super);
@@ -79,7 +78,7 @@ var taskboard;
             return this;
         };
         return Lane;
-    })(EntityBase);
+    }(EntityBase));
     taskboard.Lane = Lane;
     var User = (function (_super) {
         __extends(User, _super);
@@ -102,7 +101,7 @@ var taskboard;
             return this;
         };
         return User;
-    })(EntityBase);
+    }(EntityBase));
     taskboard.User = User;
     var Task = (function (_super) {
         __extends(Task, _super);
@@ -121,6 +120,9 @@ var taskboard;
             this.headColor = e.headColor;
             this.bodyColor = e.bodyColor;
             this.position = e.position;
+            this.reference = e.reference;
+            this.spent = e.spent;
+            this.remaining = e.remaining;
             this.userId = e.userId;
             this.laneId = e.laneId;
             this.user = e.user;
@@ -129,7 +131,7 @@ var taskboard;
             return this;
         };
         return Task;
-    })(EntityBase);
+    }(EntityBase));
     taskboard.Task = Task;
     var Notification = (function (_super) {
         __extends(Notification, _super);
@@ -151,7 +153,7 @@ var taskboard;
             return this;
         };
         return Notification;
-    })(EntityBase);
+    }(EntityBase));
     taskboard.Notification = Notification;
 })(taskboard || (taskboard = {}));
 /**
@@ -175,7 +177,7 @@ var taskboard;
             return this;
         };
         return IdVersionDTO;
-    })();
+    }());
     taskboard.IdVersionDTO = IdVersionDTO;
     var BoardSearchDTO = (function (_super) {
         __extends(BoardSearchDTO, _super);
@@ -197,7 +199,7 @@ var taskboard;
             this.name = null;
         };
         return BoardSearchDTO;
-    })(toolkit.Criteria);
+    }(toolkit.Criteria));
     taskboard.BoardSearchDTO = BoardSearchDTO;
     var BoardUserDTO = (function (_super) {
         __extends(BoardUserDTO, _super);
@@ -216,7 +218,7 @@ var taskboard;
             return this;
         };
         return BoardUserDTO;
-    })(taskboard.IdVersionDTO);
+    }(taskboard.IdVersionDTO));
     taskboard.BoardUserDTO = BoardUserDTO;
     var BoardUserSearchDTO = (function (_super) {
         __extends(BoardUserSearchDTO, _super);
@@ -240,7 +242,7 @@ var taskboard;
             this.name = null;
         };
         return BoardUserSearchDTO;
-    })(toolkit.Criteria);
+    }(toolkit.Criteria));
     taskboard.BoardUserSearchDTO = BoardUserSearchDTO;
     var IdentityDTO = (function () {
         function IdentityDTO() {
@@ -257,7 +259,7 @@ var taskboard;
             return this;
         };
         return IdentityDTO;
-    })();
+    }());
     taskboard.IdentityDTO = IdentityDTO;
     var LoginDTO = (function () {
         function LoginDTO() {
@@ -273,7 +275,7 @@ var taskboard;
             return this;
         };
         return LoginDTO;
-    })();
+    }());
     taskboard.LoginDTO = LoginDTO;
     var NotificationSearchDTO = (function (_super) {
         __extends(NotificationSearchDTO, _super);
@@ -297,7 +299,7 @@ var taskboard;
             this.email = null;
         };
         return NotificationSearchDTO;
-    })(toolkit.Criteria);
+    }(toolkit.Criteria));
     taskboard.NotificationSearchDTO = NotificationSearchDTO;
     var UserDTO = (function (_super) {
         __extends(UserDTO, _super);
@@ -318,7 +320,7 @@ var taskboard;
             return this;
         };
         return UserDTO;
-    })(taskboard.IdVersionDTO);
+    }(taskboard.IdVersionDTO));
     taskboard.UserDTO = UserDTO;
     var UserSearchDTO = (function (_super) {
         __extends(UserSearchDTO, _super);
@@ -340,7 +342,7 @@ var taskboard;
             this.name = null;
         };
         return UserSearchDTO;
-    })(toolkit.Criteria);
+    }(toolkit.Criteria));
     taskboard.UserSearchDTO = UserSearchDTO;
 })(taskboard || (taskboard = {}));
 /**
@@ -353,7 +355,7 @@ var taskboard;
         function AddUserToBoardIn() {
         }
         return AddUserToBoardIn;
-    })();
+    }());
     taskboard.AddUserToBoardIn = AddUserToBoardIn;
 })(taskboard || (taskboard = {}));
 /**
@@ -366,7 +368,7 @@ var taskboard;
         function RemoveUserFromBoardIn() {
         }
         return RemoveUserFromBoardIn;
-    })();
+    }());
     taskboard.RemoveUserFromBoardIn = RemoveUserFromBoardIn;
 })(taskboard || (taskboard = {}));
 /**
@@ -379,7 +381,7 @@ var taskboard;
         function ChangeUserPasswordIn() {
         }
         return ChangeUserPasswordIn;
-    })();
+    }());
     taskboard.ChangeUserPasswordIn = ChangeUserPasswordIn;
 })(taskboard || (taskboard = {}));
 /**
@@ -392,7 +394,7 @@ var taskboard;
         function MoveTaskIn() {
         }
         return MoveTaskIn;
-    })();
+    }());
     taskboard.MoveTaskIn = MoveTaskIn;
 })(taskboard || (taskboard = {}));
 /**
@@ -663,9 +665,11 @@ var taskboard;
             promisse.error(errorCallback != null ? errorCallback : defaultErrorHandler);
         };
         return TaskBoardService;
-    })();
+    }());
     taskboard.TaskBoardService = TaskBoardService;
-    angular.module("remoteServices", []).factory("taskBoardService", ["$http", function ($http) {
-        return new TaskBoardService($http);
-    }]);
+    angular.module("remoteServices", [])
+        .factory("taskBoardService", ["$http", function ($http) {
+            return new TaskBoardService($http);
+        }
+    ]);
 })(taskboard || (taskboard = {}));

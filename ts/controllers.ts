@@ -55,7 +55,8 @@ interface IAppScope extends MyRootScope {
     updateBoardUser(user: taskboard.BoardUserDTO);
 }
 
-function AppCtrl(
+angular.module('taskboard')
+.controller('AppCtrl', function(
         $rootScope: MyRootScope, 
         $scope: IAppScope, 
         $location: ng.ILocationService, 
@@ -293,7 +294,7 @@ function AppCtrl(
             $scope.$broadcast(BOARD_DELCOLUMN);
         }
     }
-}
+});
 
 interface Poller {
     onConnect: () => void;

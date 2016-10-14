@@ -635,6 +635,9 @@ func (this *TaskBoardServiceImpl) SaveTask(c web.IContext, task *entity.Task) (*
 			T.TASK_C_DETAIL,
 			T.TASK_C_HEAD_COLOR,
 			T.TASK_C_BODY_COLOR,
+			T.TASK_C_REFERENCE,
+			T.TASK_C_SPENT,
+			T.TASK_C_REMAINING,
 		).Values(
 			*task.Version+1,
 			time.Now(),
@@ -643,6 +646,9 @@ func (this *TaskBoardServiceImpl) SaveTask(c web.IContext, task *entity.Task) (*
 			task.Detail,
 			task.HeadColor,
 			task.BodyColor,
+			task.Reference,
+			task.Spent,
+			task.Remaining,
 		).Where(
 			T.TASK_C_ID.Matches(task.Id),
 			T.TASK_C_VERSION.Matches(task.Version),

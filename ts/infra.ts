@@ -118,6 +118,9 @@ module taskboard {
 		headColor: string;
 		bodyColor: string;
 		position: number;
+		reference: string;
+		spent: number;
+		remaining: number;
 		userId: number;
 		laneId: number;
 		user: User;
@@ -137,6 +140,9 @@ module taskboard {
 			this.headColor = e.headColor;
 			this.bodyColor = e.bodyColor;
 			this.position = e.position;
+			this.reference = e.reference;
+			this.spent = e.spent;
+			this.remaining = e.remaining;
 			this.userId = e.userId;
 			this.laneId = e.laneId;
 			this.user = e.user;

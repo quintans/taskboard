@@ -2,6 +2,7 @@
 /// <reference path="typings/angularjs/angular-route.d.ts"/>
 /// <reference path="typings/jqueryui/jqueryui.d.ts"/>
 /// <reference path="infra.ts"/>
+/// <reference path="controllers.ts"/>
 
 var TASK_MOVE_BEGIN = "TB_TASK_MOVE_BEGIN";
 var TASK_MOVE_END = "TB_TASK_MOVE_END";
@@ -81,7 +82,7 @@ function showSpinner(show: boolean) {
     }
 };
 
-angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"])
+angular.module('taskboard', ['ngRoute', 'remoteServices', 'ngStorage', 'hc.marked', 'hljs', 'angular-markdown-editor'])
     .config(function($routeProvider: ng.route.IRouteProvider) {
         $routeProvider.
             when("/board/:boardId", {

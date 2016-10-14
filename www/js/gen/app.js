@@ -2,6 +2,7 @@
 /// <reference path="typings/angularjs/angular-route.d.ts"/>
 /// <reference path="typings/jqueryui/jqueryui.d.ts"/>
 /// <reference path="infra.ts"/>
+/// <reference path="controllers.ts"/>
 var TASK_MOVE_BEGIN = "TB_TASK_MOVE_BEGIN";
 var TASK_MOVE_END = "TB_TASK_MOVE_END";
 ;
@@ -27,24 +28,32 @@ function showSpinner(show) {
     }
 }
 ;
-angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(function ($routeProvider) {
-    $routeProvider.when("/board/:boardId", {
+angular.module('taskboard', ['ngRoute', 'remoteServices', 'ngStorage', 'hc.marked', 'hljs', 'angular-markdown-editor'])
+    .config(function ($routeProvider) {
+    $routeProvider.
+        when("/board/:boardId", {
         templateUrl: "partials/board.html",
         controller: BoardCtrl
-    }).when("/users", {
+    }).
+        when("/users", {
         templateUrl: "partials/users.html",
         controller: UsersCtrl
-    }).when("/user", {
+    }).
+        when("/user", {
         templateUrl: "partials/user.html",
         controller: UserCtrl
-    }).when("/welcome", {
+    }).
+        when("/welcome", {
         templateUrl: "partials/welcome.html"
-    }).when("/about", {
+    }).
+        when("/about", {
         templateUrl: "partials/about.html"
-    }).otherwise({
+    }).
+        otherwise({
         redirectTo: "/welcome"
     });
-}).config(function ($httpProvider) {
+})
+    .config(function ($httpProvider) {
     $httpProvider.interceptors.push(function ($rootScope, $q, $localStorage) {
         return {
             'request': function (config) {
@@ -79,75 +88,80 @@ angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(f
             }
         };
     });
-}).run(["$rootScope", "$http", "taskBoardService", "$localStorage", function ($rootScope, $http, taskBoardService, $localStorage) {
-    // Holds all the requests which failed due to 401 response.
-    $rootScope.requests401 = [];
-    // On 'event:loginConfirmed', resend all the 401 requests.
-    $rootScope.$on(EVENT_LOGIN_CONFIRMED, function () {
-        var retry = function (req) {
-            $http(req.config).then(function (response) {
-                req.deferred.resolve(response);
-            });
-        };
-        var i;
-        var requests = $rootScope.requests401;
-        for (i = 0; i < requests.length; i++) {
-            retry(requests[i]);
-        }
+})
+    .run(["$rootScope", "$http", "taskBoardService", "$localStorage",
+    function ($rootScope, $http, taskBoardService, $localStorage) {
+        // Holds all the requests which failed due to 401 response.
         $rootScope.requests401 = [];
-    });
-    // On 'event:loginRequest' send credentials to the server.
-    $rootScope.$on(EVENT_LOGIN_REQUEST, function (event, username, password) {
-        var config = {
-            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" }
-        };
-        var payload = $.param({
-            username: username,
-            password: password
-        });
-        $http.post("login", payload, config).success(function (data) {
-            if (data !== "") {
-                $localStorage.jwtToken = data;
-                $rootScope.$broadcast(EVENT_LOGIN_CONFIRMED);
+        // On 'event:loginConfirmed', resend all the 401 requests.
+        $rootScope.$on(EVENT_LOGIN_CONFIRMED, function () {
+            var retry = function (req) {
+                $http(req.config).then(function (response) {
+                    req.deferred.resolve(response);
+                });
+            };
+            var i;
+            var requests = $rootScope.requests401;
+            for (i = 0; i < requests.length; i++) {
+                retry(requests[i]);
             }
-            else {
+            $rootScope.requests401 = [];
+        });
+        // On 'event:loginRequest' send credentials to the server.
+        $rootScope.$on(EVENT_LOGIN_REQUEST, function (event, username, password) {
+            var config = {
+                headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" }
+            };
+            var payload = $.param({
+                username: username,
+                password: password
+            });
+            $http.post("login", payload, config)
+                .success(function (data) {
+                if (data !== "") {
+                    $localStorage.jwtToken = data;
+                    $rootScope.$broadcast(EVENT_LOGIN_CONFIRMED);
+                }
+                else {
+                    delete $localStorage.jwtToken;
+                    toolkit.notice("Login", "Invalid Login");
+                }
+            })
+                .error(function (data, status, headers, config) {
+                // Erase the token if the user fails to log in
                 delete $localStorage.jwtToken;
-                toolkit.notice("Login", "Invalid Login");
-            }
-        }).error(function (data, status, headers, config) {
-            // Erase the token if the user fails to log in
+                toolkit.stickyError("Login", "Invalid Login");
+            });
+        });
+        function ping() {
+            $http.post("ping", "")
+                .success(function (data) {
+                if (data !== "") {
+                    $localStorage.jwtToken = data;
+                }
+                $rootScope.$broadcast(EVENT_LOGIN_CONFIRMED);
+            });
+        }
+        ;
+        // On 'logoutRequest' invoke logout on the server and broadcast 'event:loginRequired'.
+        $rootScope.$on(EVENT_LOGOUT_REQUEST, function () {
             delete $localStorage.jwtToken;
-            toolkit.stickyError("Login", "Invalid Login");
+            ping();
         });
-    });
-    function ping() {
-        $http.post("ping", "").success(function (data) {
-            if (data !== "") {
-                $localStorage.jwtToken = data;
-            }
-            $rootScope.$broadcast(EVENT_LOGIN_CONFIRMED);
-        });
-    }
-    ;
-    // On 'logoutRequest' invoke logout on the server and broadcast 'event:loginRequired'.
-    $rootScope.$on(EVENT_LOGOUT_REQUEST, function () {
-        delete $localStorage.jwtToken;
         ping();
-    });
-    ping();
-}]).directive('autoFocus', function ($timeout) {
+    }])
+    .directive('autoFocus', function ($timeout) {
     return {
         link: function (scope, element, attrs) {
             scope.$watch(attrs.autoFocus, function (val) {
                 if (angular.isDefined(val) && val) {
-                    $timeout(function () {
-                        element[0].focus();
-                    });
+                    $timeout(function () { element[0].focus(); });
                 }
             }, true);
         }
     };
-}).directive('onEnter', function () {
+})
+    .directive('onEnter', function () {
     return function (scope, element, attrs) {
         element.bind("keydown keypress", function (event) {
             if (event.which === 13) {
@@ -158,7 +172,8 @@ angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(f
             }
         });
     };
-}).directive('onEscape', function () {
+})
+    .directive('onEscape', function () {
     return function (scope, element, attrs) {
         element.bind("keydown keypress", function (event) {
             if (event.which === 27) {
@@ -169,10 +184,12 @@ angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(f
             }
         });
     };
-}).directive("tbLane", function () {
+})
+    .directive("tbLane", function () {
     return {
         link: function ($scope, element, attrs) {
-            element.addClass("lane").sortable({
+            element.addClass("lane")
+                .sortable({
                 connectWith: ".lane",
                 start: function (event, ui) {
                     ui.item.addClass("dragging");
@@ -193,13 +210,18 @@ angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(f
             });
         }
     };
-}).directive("tbPortlet", function () {
+})
+    .directive("tbPortlet", function () {
     return {
         link: function ($scope, element, attrs) {
-            element.addClass("portlet ui-widget ui-widget-content ui-helper-clearfix ui-corner-all").find(".portlet-header").addClass("ui-widget-header ui-corner-tr ui-corner-tl").end().find(".portlet-content").addClass("ui-corner-br ui-corner-bl");
+            element.addClass("portlet ui-widget ui-widget-content ui-helper-clearfix ui-corner-all")
+                .find(".portlet-header")
+                .addClass("ui-widget-header ui-corner-tr ui-corner-tl").end()
+                .find(".portlet-content").addClass("ui-corner-br ui-corner-bl");
         }
     };
-}).directive("tbToogle", function () {
+})
+    .directive("tbToogle", function () {
     return {
         link: function ($scope, element, attrs) {
             element.click(function () {
@@ -208,16 +230,18 @@ angular.module("taskboard", ["ngRoute", "remoteServices", "ngStorage"]).config(f
             });
         }
     };
-}).directive('back', ['$window', function ($window) {
-    return {
-        restrict: 'A',
-        link: function (scope, elem, attrs) {
-            elem.bind('click', function () {
-                $window.history.back();
-            });
-        }
-    };
-}]).directive("confirm", function () {
+})
+    .directive('back', ['$window', function ($window) {
+        return {
+            restrict: 'A',
+            link: function (scope, elem, attrs) {
+                elem.bind('click', function () {
+                    $window.history.back();
+                });
+            }
+        };
+    }])
+    .directive("confirm", function () {
     // end of submit
     return {
         restrict: "A",

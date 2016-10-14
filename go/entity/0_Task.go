@@ -25,6 +25,9 @@ type Task struct {
 	HeadColor *string `json:"headColor"`
 	BodyColor *string `json:"bodyColor"`
 	Position *int64 `json:"position"`
+	Reference *string `json:"reference"`
+	Spent *int64 `json:"spent"`
+	Remaining *int64 `json:"remaining"`
 	UserId *int64 `json:"userId"`
 	LaneId *int64 `json:"laneId"`
 	// ASSOCIATIONS
@@ -46,6 +49,11 @@ func (this *Task) SetPosition(position *int64) {
 	this.Mark("Position")
 }
 
+func (this *Task) SetReference(reference *string) {
+	this.Reference = reference
+	this.Mark("Reference")
+}
+
 func (this *Task) SetUserId(userId *int64) {
 	this.UserId = userId
 	this.Mark("UserId")
@@ -56,9 +64,19 @@ func (this *Task) SetHeadColor(headColor *string) {
 	this.Mark("HeadColor")
 }
 
+func (this *Task) SetSpent(spent *int64) {
+	this.Spent = spent
+	this.Mark("Spent")
+}
+
 func (this *Task) SetTitle(title *string) {
 	this.Title = title
 	this.Mark("Title")
+}
+
+func (this *Task) SetRemaining(remaining *int64) {
+	this.Remaining = remaining
+	this.Mark("Remaining")
 }
 
 func (this *Task) SetLaneId(laneId *int64) {
@@ -86,6 +104,9 @@ func (this *Task) Copy(entity *Task) {
 		this.HeadColor = app.CopyString(entity.HeadColor)
 		this.BodyColor = app.CopyString(entity.BodyColor)
 		this.Position = app.CopyInteger(entity.Position)
+		this.Reference = app.CopyString(entity.Reference)
+		this.Spent = app.CopyInteger(entity.Spent)
+		this.Remaining = app.CopyInteger(entity.Remaining)
 		// associations
 		this.User = entity.User
 		this.Lane = entity.Lane
@@ -102,6 +123,9 @@ func (this *Task) String() string {
 	sb.Add(", HeadColor: ", this.HeadColor)
 	sb.Add(", BodyColor: ", this.BodyColor)
 	sb.Add(", Position: ", this.Position)
+	sb.Add(", Reference: ", this.Reference)
+	sb.Add(", Spent: ", this.Spent)
+	sb.Add(", Remaining: ", this.Remaining)
 	sb.Add(", *UserId: ", *this.UserId)
 	sb.Add(", *LaneId: ", *this.LaneId)
 	sb.Add("}")

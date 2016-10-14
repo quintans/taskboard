@@ -65,17 +65,26 @@ span.glyphicon {
 }
 
 .portlet-header .subject {
-	clear: both;
+	float: left;
 }
 
 .portlet-header .login {
-	float: left;
+	clear: both;
 	font-weight: normal;
 }
 
 .portlet-header .deadline {
 	float: right;
 	font-weight: normal;
+}
+
+.card-line {
+	height: 15px;
+	font-weight: normal;
+}
+
+.clearfix {
+	clear: both;
 }
 
 .portlet {
