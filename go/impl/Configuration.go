@@ -65,7 +65,7 @@ var (
 	SmtpPort string
 	SmtpFrom string
 
-	taskBoardService service.ITaskBoardService
+	TaskBoardService service.ITaskBoardService
 )
 
 var varguard = regexp.MustCompile("\\${[^{}]+}")
@@ -86,6 +86,8 @@ func replaceOsEnv(val string) string {
 }
 
 func init() {
+	TaskBoardService = new(TaskBoardServiceImpl)
+
 	c, err := goconfig.ReadConfigFile("taskboard.ini")
 	if err != nil {
 		panic(err)
@@ -203,8 +205,6 @@ func init() {
 	 */
 
 	Poll = poller.NewPoller(30 * time.Second)
-
-	taskBoardService = NewTaskBoardService(nil)
 }
 
 func GenerateRandomBytes(n int) ([]byte, error) {
@@ -374,8 +374,8 @@ func AuthenticationFilter(ctx web.IContext) error {
 	return nil
 }
 
-func ContextFactory(w http.ResponseWriter, r *http.Request) web.IContext {
-	return NewAppCtx(w, r, taskBoardService)
+func ContextFactory(w http.ResponseWriter, r *http.Request, filters []*web.Filter) web.IContext {
+	return NewAppCtx(w, r, filters, TaskBoardService)
 }
 
 // Gzip Compression

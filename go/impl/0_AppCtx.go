@@ -5,78 +5,85 @@
 package impl
 
 import (
+	"encoding/json"
 	"net/http"
-
+	"github.com/quintans/toolkit/web"
 	"github.com/quintans/goSQL/db"
 	"github.com/quintans/taskboard/go/service"
-	"github.com/quintans/toolkit/web"
 )
 
 func NewAppCtx(
-	w http.ResponseWriter,
+	w http.ResponseWriter, 
 	r *http.Request,
+	filters []*web.Filter,
 	taskBoardService service.ITaskBoardService,
 ) *AppCtx {
 	this := new(AppCtx)
 	this.Context = new(web.Context)
-	this.Init(w, r)
+	this.Init(this, w, r, filters)
 	this.taskBoardService = taskBoardService
 	return this
 }
 
+var _ web.IContext = &AppCtx{}
+
 type AppCtx struct {
 	*web.Context
-
-	Principal        *Principal
-	Store            db.IDb
+	
+	Principal *Principal
+	Store db.IDb
 	taskBoardService service.ITaskBoardService
 }
+
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
 	return this.taskBoardService
 }
 
-func (this *AppCtx) BuildJsonRpc(transaction func(ctx web.IContext) error) *web.JsonRpc {
-	// JSON-RPC services
-	json := web.NewJsonRpc(nil) // json-rpc resgistry
-
-	var svc = json.RegisterAs("taskboard", this.GetTaskBoardService())
-	svc.PushFilterFunc("WhoAmI", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("FetchBoardUsers", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("FetchBoardAllUsers", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("FetchBoards", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("FetchBoardById", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("FullyLoadBoardById", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("SaveBoard", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("DeleteBoard", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("AddLane", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("SaveLane", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("DeleteLastLane", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("SaveUser", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("FetchUsers", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("DisableUser", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("AddUserToBoard", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("RemoveUserFromBoard", transaction, authorize("ADMIN"), jsonpProtection)
-	svc.PushFilterFunc("SaveUserName", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("ChangeUserPassword", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("SaveTask", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("MoveTask", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("FetchNotifications", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("SaveNotification", transaction, authorize("USER"), jsonpProtection)
-	svc.PushFilterFunc("DeleteNotification", transaction, authorize("USER"), jsonpProtection)
-	return json
+func (this *AppCtx) SetTaskBoardService(taskBoardService service.ITaskBoardService) {
+	this.taskBoardService = taskBoardService
 }
 
-// JSON Vulnerability Protection.
-// AngularJS will automatically strip the prefix before processing it as JSON.
-func jsonpProtection(ctx web.IContext) error {
-	err := ctx.Proceed()
-	// this must be written after because cookies might be set (ex: Login)
-	if err == nil {
-		ctx.GetResponse().Write([]byte(")]}',\n"))
+func (this *AppCtx) BuildJsonRpcTaskBoardService(transaction func(ctx web.IContext) error) *web.JsonRpc {
+	// JSON-RPC services
+	var rpc = web.NewJsonRpc(this.taskBoardService, transaction) // json-rpc builder
+	rpc.SetActionFilters("WhoAmI", authorize("USER"))
+	rpc.SetActionFilters("FetchBoardUsers", authorize("USER"))
+	rpc.SetActionFilters("FetchBoardAllUsers", authorize("ADMIN"))
+	rpc.SetActionFilters("FetchBoards", authorize("USER"))
+	rpc.SetActionFilters("FetchBoardById", authorize("USER"))
+	rpc.SetActionFilters("FullyLoadBoardById", authorize("USER"))
+	rpc.SetActionFilters("SaveBoard", authorize("ADMIN"))
+	rpc.SetActionFilters("DeleteBoard", authorize("ADMIN"))
+	rpc.SetActionFilters("AddLane", authorize("ADMIN"))
+	rpc.SetActionFilters("SaveLane", authorize("ADMIN"))
+	rpc.SetActionFilters("DeleteLastLane", authorize("ADMIN"))
+	rpc.SetActionFilters("SaveUser", authorize("ADMIN"))
+	rpc.SetActionFilters("FetchUsers", authorize("ADMIN"))
+	rpc.SetActionFilters("DisableUser", authorize("ADMIN"))
+	rpc.SetActionFilters("AddUserToBoard", authorize("ADMIN"))
+	rpc.SetActionFilters("RemoveUserFromBoard", authorize("ADMIN"))
+	rpc.SetActionFilters("SaveUserName", authorize("USER"))
+	rpc.SetActionFilters("ChangeUserPassword", authorize("USER"))
+	rpc.SetActionFilters("SaveTask", authorize("USER"))
+	rpc.SetActionFilters("MoveTask", authorize("USER"))
+	rpc.SetActionFilters("FetchNotifications", authorize("USER"))
+	rpc.SetActionFilters("SaveNotification", authorize("USER"))
+	rpc.SetActionFilters("DeleteNotification", authorize("USER"))
+	return rpc
+}
+
+func (this *AppCtx) Reply(value interface{}) error {
+	// JSON Vulnerability Protection.
+	// AngularJS will automatically strip the prefix before processing it as JSON.
+	result, err := json.Marshal(value)
+	if err != nil {
+		return err
 	}
+	_, err = this.Response.Write([]byte(")]}',\n" + string(result)))
 	return err
 }
+
 
 func authorize(roles ...string) func(ctx web.IContext) error {
 	return func(ctx web.IContext) error {

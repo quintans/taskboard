@@ -30,12 +30,15 @@ func main() {
 	app.Limit = impl.Limit
 	app.AuthenticationFilter = impl.AuthenticationFilter
 	app.ResponseBuffer = impl.ResponseBuffer
-	appCtx := impl.NewAppCtx(nil, nil, nil)
-	// service factory
-	app.Json = appCtx.BuildJsonRpc(impl.TransactionFilter)
 	app.TransactionFilter = impl.TransactionFilter
 	app.LoginFilter = impl.LoginFilter
 	app.PingFilter = impl.PingFilter
+	app.Poll = impl.Poll
+	app.IpPort = impl.IpPort
+
+	appCtx := impl.NewAppCtx(nil, nil, nil, impl.TaskBoardService)
+	// service factory
+	app.JsonRpc = appCtx.BuildJsonRpcTaskBoardService(app.TransactionFilter)
 
 	// delivering static content and preventing malicious access
 	fs := web.OnlyFilesFS{http.Dir(impl.ContentDir)}

@@ -10,18 +10,17 @@ import (
 
 // App is the main application
 type App struct {
-	ContextFactory       func(w http.ResponseWriter, r *http.Request) web.IContext
+	ContextFactory       func(w http.ResponseWriter, r *http.Request, filters []*web.Filter) web.IContext
 	Limit                func(ctx web.IContext) error
 	AuthenticationFilter func(ctx web.IContext) error
 	ResponseBuffer       func(ctx web.IContext) error
 	TransactionFilter    func(ctx web.IContext) error
 	LoginFilter          func(ctx web.IContext) error
 	PingFilter           func(ctx web.IContext) error
-	ContentDir           func(ctx web.IContext) error
-	Json                 web.Filterer
 	Poll                 http.Handler
 	IpPort               string
 	fileServerFilter     func(ctx web.IContext) error
+	JsonRpc              *web.JsonRpc
 }
 
 func (app *App) Start() {
@@ -37,7 +36,7 @@ func (app *App) Start() {
 	// security
 	fh.Push("/rest/*", app.AuthenticationFilter, app.ResponseBuffer)
 	// json services will be the most used so, they are at the front
-	fh.Push("/rest/*", app.Json.Handle)
+	fh.Add(app.JsonRpc.Build("/rest/taskboard")...)
 
 	fh.Push("/login", app.ResponseBuffer, app.TransactionFilter, app.LoginFilter)
 	// this endponint is called as the expiration time of the token approaches
