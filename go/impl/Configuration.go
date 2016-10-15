@@ -9,6 +9,7 @@ import (
 	"github.com/quintans/goSQL/db"
 	"github.com/quintans/goSQL/dbx"
 	trx "github.com/quintans/goSQL/translators"
+	"github.com/quintans/maze"
 	tk "github.com/quintans/toolkit"
 	"github.com/quintans/toolkit/log"
 	"github.com/quintans/toolkit/web"
@@ -265,7 +266,7 @@ func deserializePrincipal(r *http.Request) *Principal {
 	}
 }
 
-func TransactionFilter(ctx web.IContext) error {
+func TransactionFilter(ctx maze.IContext) error {
 	return TM.Transaction(func(DB db.IDb) error {
 		appCtx := ctx.(*AppCtx)
 		appCtx.Store = DB
@@ -278,7 +279,7 @@ func TransactionFilter(ctx web.IContext) error {
 	})
 }
 
-func NoTransactionFilter(ctx web.IContext) error {
+func NoTransactionFilter(ctx maze.IContext) error {
 	return TM.NoTransaction(func(DB db.IDb) error {
 		appCtx := ctx.(*AppCtx)
 		appCtx.Store = DB
@@ -287,7 +288,7 @@ func NoTransactionFilter(ctx web.IContext) error {
 	})
 }
 
-func PingFilter(ctx web.IContext) error {
+func PingFilter(ctx maze.IContext) error {
 	ctx.GetResponse().Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	// TODO what happens if this is called right after the user submited a password change
@@ -318,7 +319,7 @@ func PingFilter(ctx web.IContext) error {
 	return nil
 }
 
-func LoginFilter(ctx web.IContext) error {
+func LoginFilter(ctx maze.IContext) error {
 	ctx.GetResponse().Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	//logger.Debugf("serving static(): " + ctx.GetRequest().URL.Path)
@@ -360,7 +361,7 @@ func LoginFilter(ctx web.IContext) error {
 	return err
 }
 
-func AuthenticationFilter(ctx web.IContext) error {
+func AuthenticationFilter(ctx maze.IContext) error {
 	p := deserializePrincipal(ctx.GetRequest())
 	if p != nil {
 		// for authorizations and business logic
@@ -374,7 +375,7 @@ func AuthenticationFilter(ctx web.IContext) error {
 	return nil
 }
 
-func ContextFactory(w http.ResponseWriter, r *http.Request, filters []*web.Filter) web.IContext {
+func ContextFactory(w http.ResponseWriter, r *http.Request, filters []*maze.Filter) maze.IContext {
 	return NewAppCtx(w, r, filters, TaskBoardService)
 }
 
@@ -403,7 +404,7 @@ var zippers = sync.Pool{New: func() interface{} {
 var zipexts = []string{".html", ".js", ".css", ".svg", ".xml"}
 
 // Limit limits the body of a post, compress response and format eventual errors
-func Limit(ctx web.IContext) (err error) {
+func Limit(ctx maze.IContext) (err error) {
 	r := ctx.GetRequest()
 	// https only -- redirect in openshift
 	if HttpsOnly && !isHttps(r) {
@@ -492,7 +493,7 @@ func jsonError(w http.ResponseWriter, code string, msg string) {
 
 // ResponseBuffer buffers the response, permiting setting headers after starting writing the response.
 // It also gzips the response if the client browser supports it.
-func ResponseBuffer(ctx web.IContext) error {
+func ResponseBuffer(ctx maze.IContext) error {
 	appCtx := ctx.(*AppCtx)
 	rec := web.NewBufferedResponse()
 	w := appCtx.Response

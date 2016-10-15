@@ -7,34 +7,34 @@ package impl
 import (
 	"encoding/json"
 	"net/http"
-	"github.com/quintans/toolkit/web"
+
 	"github.com/quintans/goSQL/db"
+	"github.com/quintans/maze"
 	"github.com/quintans/taskboard/go/service"
 )
 
 func NewAppCtx(
-	w http.ResponseWriter, 
+	w http.ResponseWriter,
 	r *http.Request,
-	filters []*web.Filter,
+	filters []*maze.Filter,
 	taskBoardService service.ITaskBoardService,
 ) *AppCtx {
-	this := new(AppCtx)
-	this.Context = new(web.Context)
-	this.Init(this, w, r, filters)
+	var this = new(AppCtx)
+	this.Context = maze.NewContext(w, r, filters)
+	this.Overrider = this
 	this.taskBoardService = taskBoardService
 	return this
 }
 
-var _ web.IContext = &AppCtx{}
+var _ maze.IContext = &AppCtx{}
 
 type AppCtx struct {
-	*web.Context
-	
-	Principal *Principal
-	Store db.IDb
+	*maze.Context
+
+	Principal        *Principal
+	Store            db.IDb
 	taskBoardService service.ITaskBoardService
 }
-
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
 	return this.taskBoardService
@@ -44,9 +44,9 @@ func (this *AppCtx) SetTaskBoardService(taskBoardService service.ITaskBoardServi
 	this.taskBoardService = taskBoardService
 }
 
-func (this *AppCtx) BuildJsonRpcTaskBoardService(transaction func(ctx web.IContext) error) *web.JsonRpc {
+func (this *AppCtx) BuildJsonRpcTaskBoardService(transaction func(ctx maze.IContext) error) *maze.JsonRpc {
 	// JSON-RPC services
-	var rpc = web.NewJsonRpc(this.taskBoardService, transaction) // json-rpc builder
+	var rpc = maze.NewJsonRpc(this.taskBoardService, transaction) // json-rpc builder
 	rpc.SetActionFilters("WhoAmI", authorize("USER"))
 	rpc.SetActionFilters("FetchBoardUsers", authorize("USER"))
 	rpc.SetActionFilters("FetchBoardAllUsers", authorize("ADMIN"))
@@ -87,8 +87,8 @@ func (this *AppCtx) Reply(value interface{}) error {
 	return err
 }
 
-func authorize(roles ...string) func(ctx web.IContext) error {
-	return func(ctx web.IContext) error {
+func authorize(roles ...string) func(ctx maze.IContext) error {
+	return func(ctx maze.IContext) error {
 		user := ctx.(*AppCtx).Principal
 		for _, r := range roles {
 			for _, role := range user.Roles {

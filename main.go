@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/quintans/maze"
 	"github.com/quintans/taskboard/go/impl"
 	"github.com/quintans/toolkit/log"
 	"github.com/quintans/toolkit/web"
@@ -43,7 +44,7 @@ func main() {
 	// delivering static content and preventing malicious access
 	fs := web.OnlyFilesFS{http.Dir(impl.ContentDir)}
 	fileServer := http.FileServer(fs)
-	app.fileServerFilter = func(ctx web.IContext) error {
+	app.fileServerFilter = func(ctx maze.IContext) error {
 		//logger.Debugf("serving static(): " + ctx.GetRequest().URL.Path)
 		fileServer.ServeHTTP(ctx.GetResponse(), ctx.GetRequest())
 		return nil

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/quintans/maze"
 	"github.com/quintans/toolkit/log"
-	"github.com/quintans/toolkit/web"
 
 	"net/http"
 	"time"
@@ -10,17 +10,17 @@ import (
 
 // App is the main application
 type App struct {
-	ContextFactory       func(w http.ResponseWriter, r *http.Request, filters []*web.Filter) web.IContext
-	Limit                func(ctx web.IContext) error
-	AuthenticationFilter func(ctx web.IContext) error
-	ResponseBuffer       func(ctx web.IContext) error
-	TransactionFilter    func(ctx web.IContext) error
-	LoginFilter          func(ctx web.IContext) error
-	PingFilter           func(ctx web.IContext) error
+	ContextFactory       func(w http.ResponseWriter, r *http.Request, filters []*maze.Filter) maze.IContext
+	Limit                func(ctx maze.IContext) error
+	AuthenticationFilter func(ctx maze.IContext) error
+	ResponseBuffer       func(ctx maze.IContext) error
+	TransactionFilter    func(ctx maze.IContext) error
+	LoginFilter          func(ctx maze.IContext) error
+	PingFilter           func(ctx maze.IContext) error
 	Poll                 http.Handler
 	IpPort               string
-	fileServerFilter     func(ctx web.IContext) error
-	JsonRpc              *web.JsonRpc
+	fileServerFilter     func(ctx maze.IContext) error
+	JsonRpc              *maze.JsonRpc
 }
 
 func (app *App) Start() {
@@ -29,7 +29,7 @@ func (app *App) Start() {
 	logger := log.LoggerFor("taskboad")
 
 	// Filters will be executed in order
-	fh := web.NewFilterHandler(app.ContextFactory)
+	fh := maze.NewMaze(app.ContextFactory)
 
 	// limits size
 	fh.Push("/*", app.Limit)

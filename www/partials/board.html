@@ -32,11 +32,11 @@
 							<a ng-show="task.reference" ng-href="{{task.reference}}" target="_blank" class="subject">{{task.title}}</a>
 							<div class="login">{{task.user.name}}</div>
 							<div class="card-line">
-								<span class="pull-left">spent: <b>{{task.spent | number}}</b> h</span>
-								<span class="pull-right">remaining: <b>{{task.remaining | number}}</b> h</span>
+								<span class="pull-left">spent: <b>{{task.spent || 0}}</b> h</span>
+								<span class="pull-right">remaining: <b>{{task.remaining || 0}}</b> h</span>
 							</div>
 						</div>
-						<div marked="task.detail" class="markdown portlet-content" 
+						<div marked="task.detail" class="outline" 
 							style="background: {{task.bodyColor}}; display: {{isExpanded(task.id) && 'block' || 'none'}};"></div>
 					</div>
 				</td>

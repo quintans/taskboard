@@ -5,113 +5,113 @@
 package service;
 
 import (
+	"github.com/quintans/maze"
 	"github.com/quintans/taskboard/go/dto"
 	"github.com/quintans/taskboard/go/entity"
-	"github.com/quintans/toolkit/web"
 	"github.com/quintans/toolkit/web/app"
 )
 
 type ITaskBoardService interface {
 	
 	// return
-	WhoAmI(ctx web.IContext) (dto.IdentityDTO, error)
+	WhoAmI(c maze.IContext) (dto.IdentityDTO, error)
 	
 	// return only the users that belong to board
 	//
 	// param id	
 	// return
-	FetchBoardUsers(ctx web.IContext, id int64) ([]dto.BoardUserDTO, error)
+	FetchBoardUsers(c maze.IContext, id int64) ([]dto.BoardUserDTO, error)
 	
 	// return all users and flag them if they belong to board
 	//
 	// param criteria	
 	// return
-	FetchBoardAllUsers(ctx web.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error)
+	FetchBoardAllUsers(c maze.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error)
 	
 	// param criteria	
 	// return
-	FetchBoards(ctx web.IContext, criteria dto.BoardSearchDTO) (app.Page, error)
+	FetchBoards(c maze.IContext, criteria dto.BoardSearchDTO) (app.Page, error)
 	
 	// param id	
 	// return
-	FetchBoardById(ctx web.IContext, id int64) (*entity.Board, error)
+	FetchBoardById(c maze.IContext, id int64) (*entity.Board, error)
 	
 	// param id	
 	// return
-	FullyLoadBoardById(ctx web.IContext, id int64) (*entity.Board, error)
+	FullyLoadBoardById(c maze.IContext, id int64) (*entity.Board, error)
 	
 	// param board	
 	// return
-	SaveBoard(ctx web.IContext, board *entity.Board) (*entity.Board, error)
+	SaveBoard(c maze.IContext, board *entity.Board) (*entity.Board, error)
 	
 	// param id	
 	// return
-	DeleteBoard(ctx web.IContext, id int64) error
+	DeleteBoard(c maze.IContext, id int64) error
 	
 	// param boardId	
 	// return
-	AddLane(ctx web.IContext, boardId int64) error
+	AddLane(c maze.IContext, boardId int64) error
 	
 	// param lane	
 	// return
-	SaveLane(ctx web.IContext, lane *entity.Lane) (*entity.Lane, error)
+	SaveLane(c maze.IContext, lane *entity.Lane) (*entity.Lane, error)
 	
 	// param boardId	
 	// return
-	DeleteLastLane(ctx web.IContext, boardId int64) error
+	DeleteLastLane(c maze.IContext, boardId int64) error
 	
 	// param user	
 	// return
-	SaveUser(ctx web.IContext, user dto.UserDTO) (bool, error)
+	SaveUser(c maze.IContext, user dto.UserDTO) (bool, error)
 	
 	// param criteria	
 	// return
-	FetchUsers(ctx web.IContext, criteria dto.UserSearchDTO) (app.Page, error)
+	FetchUsers(c maze.IContext, criteria dto.UserSearchDTO) (app.Page, error)
 	
 	// param user	
 	// return
-	DisableUser(ctx web.IContext, user dto.IdVersionDTO) error
+	DisableUser(c maze.IContext, user dto.IdVersionDTO) error
 	
 	// param boardId	
 	// param userId	
 	// return
-	AddUserToBoard(ctx web.IContext, input AddUserToBoardIn) error
+	AddUserToBoard(c maze.IContext, input AddUserToBoardIn) error
 	
 	// param boardId	
 	// param userId	
 	// return
-	RemoveUserFromBoard(ctx web.IContext, input RemoveUserFromBoardIn) error
+	RemoveUserFromBoard(c maze.IContext, input RemoveUserFromBoardIn) error
 	
 	// param name	
 	// return
-	SaveUserName(ctx web.IContext, name *string) error
+	SaveUserName(c maze.IContext, name *string) error
 	
 	// param oldPwd	
 	// param newPwd	
 	// return
-	ChangeUserPassword(ctx web.IContext, input ChangeUserPasswordIn) (string, error)
+	ChangeUserPassword(c maze.IContext, input ChangeUserPasswordIn) (string, error)
 	
 	// param task	
 	// return
-	SaveTask(ctx web.IContext, task *entity.Task) (*entity.Task, error)
+	SaveTask(c maze.IContext, task *entity.Task) (*entity.Task, error)
 	
 	// param taskId	
 	// param laneId	
 	// param position	position = -1 is to eliminate
 	// return
-	MoveTask(ctx web.IContext, input MoveTaskIn) error
+	MoveTask(c maze.IContext, input MoveTaskIn) error
 	
 	// param criteria	
 	// return
-	FetchNotifications(ctx web.IContext, criteria dto.NotificationSearchDTO) (app.Page, error)
+	FetchNotifications(c maze.IContext, criteria dto.NotificationSearchDTO) (app.Page, error)
 	
 	// if it returns null, it means the notification was not saved due a matching one
 	//
 	// param notification	
 	// return
-	SaveNotification(ctx web.IContext, notification *entity.Notification) (*entity.Notification, error)
+	SaveNotification(c maze.IContext, notification *entity.Notification) (*entity.Notification, error)
 	
 	// param id	
 	// return
-	DeleteNotification(ctx web.IContext, id int64) error
+	DeleteNotification(c maze.IContext, id int64) error
 }

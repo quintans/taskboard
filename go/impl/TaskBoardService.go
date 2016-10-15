@@ -8,13 +8,13 @@ import (
 
 	. "github.com/quintans/goSQL/db"
 	"github.com/quintans/goSQL/dbx"
+	"github.com/quintans/maze"
 	"github.com/quintans/taskboard/go/dto"
 	"github.com/quintans/taskboard/go/entity"
 	"github.com/quintans/taskboard/go/lov"
 	"github.com/quintans/taskboard/go/service"
 	T "github.com/quintans/taskboard/go/tables"
 	. "github.com/quintans/toolkit/ext"
-	"github.com/quintans/toolkit/web"
 	"github.com/quintans/toolkit/web/app"
 
 	"crypto/tls"
@@ -37,7 +37,7 @@ var _ service.ITaskBoardService = &TaskBoardServiceImpl{}
 type TaskBoardServiceImpl struct {
 }
 
-func (this *TaskBoardServiceImpl) WhoAmI(c web.IContext) (dto.IdentityDTO, error) {
+func (this *TaskBoardServiceImpl) WhoAmI(c maze.IContext) (dto.IdentityDTO, error) {
 	ctx := c.(*AppCtx)
 	p := ctx.Principal
 	identity := dto.IdentityDTO{}
@@ -57,7 +57,7 @@ func (this *TaskBoardServiceImpl) WhoAmI(c web.IContext) (dto.IdentityDTO, error
 	return identity, nil
 }
 
-func (this *TaskBoardServiceImpl) broadcastBoardChange(ctx web.IContext, id int64) error {
+func (this *TaskBoardServiceImpl) broadcastBoardChange(ctx maze.IContext, id int64) error {
 	board, err := this.FullyLoadBoardById(ctx, id)
 	if err == nil {
 		go Poll.Broadcast(fmt.Sprintf("board:%v", id), board)
@@ -134,7 +134,7 @@ func checkLaneVersion(store IDb, laneId int64, version int64) error {
 	return nil
 }
 
-func (this *TaskBoardServiceImpl) FetchBoardUsers(c web.IContext, id int64) ([]dto.BoardUserDTO, error) {
+func (this *TaskBoardServiceImpl) FetchBoardUsers(c maze.IContext, id int64) ([]dto.BoardUserDTO, error) {
 	ctx := c.(*AppCtx)
 	if err := canAccessBoard(ctx.Store, ctx.Principal, id); err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func (this *TaskBoardServiceImpl) FetchBoardUsers(c web.IContext, id int64) ([]d
 
 // param criteria
 // return
-func (this *TaskBoardServiceImpl) FetchBoardAllUsers(c web.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error) {
+func (this *TaskBoardServiceImpl) FetchBoardAllUsers(c maze.IContext, criteria dto.BoardUserSearchDTO) (app.Page, error) {
 	store := c.(*AppCtx).Store
 	belongs := store.Query(T.BOARD_USER).Alias("b").
 		CountAll().
@@ -187,7 +187,7 @@ func (this *TaskBoardServiceImpl) FetchBoardAllUsers(c web.IContext, criteria dt
 
 // param criteria
 // return
-func (this *TaskBoardServiceImpl) FetchBoards(c web.IContext, criteria dto.BoardSearchDTO) (app.Page, error) {
+func (this *TaskBoardServiceImpl) FetchBoards(c maze.IContext, criteria dto.BoardSearchDTO) (app.Page, error) {
 	var ctx = c.(*AppCtx)
 	q := ctx.Store.Query(T.BOARD).All()
 	p := ctx.Principal
@@ -214,7 +214,7 @@ func (this *TaskBoardServiceImpl) FetchBoards(c web.IContext, criteria dto.Board
 
 // param id
 // return
-func (this *TaskBoardServiceImpl) FetchBoardById(c web.IContext, id int64) (*entity.Board, error) {
+func (this *TaskBoardServiceImpl) FetchBoardById(c maze.IContext, id int64) (*entity.Board, error) {
 	ctx := c.(*AppCtx)
 	if err := canAccessBoard(ctx.Store, ctx.Principal, id); err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (this *TaskBoardServiceImpl) FetchBoardById(c web.IContext, id int64) (*ent
 	return b, nil
 }
 
-func (this *TaskBoardServiceImpl) FullyLoadBoardById(c web.IContext, id int64) (*entity.Board, error) {
+func (this *TaskBoardServiceImpl) FullyLoadBoardById(c maze.IContext, id int64) (*entity.Board, error) {
 	ctx := c.(*AppCtx)
 	if err := canAccessBoard(ctx.Store, ctx.Principal, id); err != nil {
 		return nil, err
@@ -246,7 +246,7 @@ func (this *TaskBoardServiceImpl) FullyLoadBoardById(c web.IContext, id int64) (
 
 // param board
 // return
-func (this *TaskBoardServiceImpl) SaveBoard(ctx web.IContext, board *entity.Board) (*entity.Board, error) {
+func (this *TaskBoardServiceImpl) SaveBoard(ctx maze.IContext, board *entity.Board) (*entity.Board, error) {
 	if _, err := ctx.(*AppCtx).Store.Save(board); err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func (this *TaskBoardServiceImpl) SaveBoard(ctx web.IContext, board *entity.Boar
 
 // param idVersion
 // return
-func (this *TaskBoardServiceImpl) DeleteBoard(ctx web.IContext, id int64) error {
+func (this *TaskBoardServiceImpl) DeleteBoard(ctx maze.IContext, id int64) error {
 	myCtx := ctx.(*AppCtx)
 	store := myCtx.Store
 	// delete all notifications
@@ -299,7 +299,7 @@ func (this *TaskBoardServiceImpl) DeleteBoard(ctx web.IContext, id int64) error 
 	return nil
 }
 
-func (this *TaskBoardServiceImpl) AddLane(ctx web.IContext, boardId int64) error {
+func (this *TaskBoardServiceImpl) AddLane(ctx maze.IContext, boardId int64) error {
 	myCtx := ctx.(*AppCtx)
 	store := myCtx.Store
 
@@ -336,7 +336,7 @@ func (this *TaskBoardServiceImpl) AddLane(ctx web.IContext, boardId int64) error
 
 // param lane
 // return
-func (this *TaskBoardServiceImpl) SaveLane(ctx web.IContext, lane *entity.Lane) (*entity.Lane, error) {
+func (this *TaskBoardServiceImpl) SaveLane(ctx maze.IContext, lane *entity.Lane) (*entity.Lane, error) {
 	myCtx := ctx.(*AppCtx)
 	if _, err := myCtx.Store.Save(lane); err != nil {
 		return nil, err
@@ -352,7 +352,7 @@ func (this *TaskBoardServiceImpl) SaveLane(ctx web.IContext, lane *entity.Lane) 
 // if lane is the last one remove all tasks, if not, move all tasks to the previous lane
 // param idVersion
 // return
-func (this *TaskBoardServiceImpl) DeleteLastLane(ctx web.IContext, boardId int64) error {
+func (this *TaskBoardServiceImpl) DeleteLastLane(ctx maze.IContext, boardId int64) error {
 	myCtx := ctx.(*AppCtx)
 	store := myCtx.Store
 
@@ -427,7 +427,7 @@ func (this *TaskBoardServiceImpl) DeleteLastLane(ctx web.IContext, boardId int64
 
 // param user
 // return
-func (this *TaskBoardServiceImpl) SaveUser(c web.IContext, user dto.UserDTO) (bool, error) {
+func (this *TaskBoardServiceImpl) SaveUser(c maze.IContext, user dto.UserDTO) (bool, error) {
 	var ctx = c.(*AppCtx)
 	store := ctx.Store
 	if user.Id == nil {
@@ -501,7 +501,7 @@ func (this *TaskBoardServiceImpl) SaveUser(c web.IContext, user dto.UserDTO) (bo
 
 // param criteria
 // return
-func (this *TaskBoardServiceImpl) FetchUsers(ctx web.IContext, criteria dto.UserSearchDTO) (app.Page, error) {
+func (this *TaskBoardServiceImpl) FetchUsers(ctx maze.IContext, criteria dto.UserSearchDTO) (app.Page, error) {
 	store := ctx.(*AppCtx).Store
 	admin := store.Query(T.ROLE).Alias("r").
 		CountAll().
@@ -539,14 +539,14 @@ func (this *TaskBoardServiceImpl) FetchUsers(ctx web.IContext, criteria dto.User
 
 // param userId
 // return
-func (this *TaskBoardServiceImpl) DisableUser(c web.IContext, iv dto.IdVersionDTO) error {
+func (this *TaskBoardServiceImpl) DisableUser(c maze.IContext, iv dto.IdVersionDTO) error {
 	return app.SoftDeleteByIdAndVersion(c.(*AppCtx).Store, T.USER, *iv.Id, *iv.Version)
 }
 
 // param boardId
 // param userId
 // return
-func (this *TaskBoardServiceImpl) AddUserToBoard(ctx web.IContext, input service.AddUserToBoardIn) error {
+func (this *TaskBoardServiceImpl) AddUserToBoard(ctx maze.IContext, input service.AddUserToBoardIn) error {
 	store := ctx.(*AppCtx).Store
 	_, err := store.Insert(T.BOARD_USER).
 		Set(T.BOARD_USER_C_BOARDS_ID, input.BoardId).
@@ -559,7 +559,7 @@ func (this *TaskBoardServiceImpl) AddUserToBoard(ctx web.IContext, input service
 // param boardId
 // param userId
 // return
-func (this *TaskBoardServiceImpl) RemoveUserFromBoard(ctx web.IContext, input service.RemoveUserFromBoardIn) error {
+func (this *TaskBoardServiceImpl) RemoveUserFromBoard(ctx maze.IContext, input service.RemoveUserFromBoardIn) error {
 	store := ctx.(*AppCtx).Store
 	var err error
 	_, err = store.Delete(T.BOARD_USER).
@@ -572,7 +572,7 @@ func (this *TaskBoardServiceImpl) RemoveUserFromBoard(ctx web.IContext, input se
 
 // param name
 // return
-func (this *TaskBoardServiceImpl) SaveUserName(c web.IContext, name *string) error {
+func (this *TaskBoardServiceImpl) SaveUserName(c maze.IContext, name *string) error {
 	ctx := c.(*AppCtx)
 	store := ctx.Store
 
@@ -590,7 +590,7 @@ func (this *TaskBoardServiceImpl) SaveUserName(c web.IContext, name *string) err
 // param oldPwd
 // param newPwd
 // return
-func (this *TaskBoardServiceImpl) ChangeUserPassword(c web.IContext, input service.ChangeUserPasswordIn) (string, error) {
+func (this *TaskBoardServiceImpl) ChangeUserPassword(c maze.IContext, input service.ChangeUserPasswordIn) (string, error) {
 	ctx := c.(*AppCtx)
 	store := ctx.Store
 
@@ -616,7 +616,7 @@ func (this *TaskBoardServiceImpl) ChangeUserPassword(c web.IContext, input servi
 
 // param task
 // return
-func (this *TaskBoardServiceImpl) SaveTask(c web.IContext, task *entity.Task) (*entity.Task, error) {
+func (this *TaskBoardServiceImpl) SaveTask(c maze.IContext, task *entity.Task) (*entity.Task, error) {
 	ctx := c.(*AppCtx)
 	store := ctx.Store
 
@@ -722,7 +722,7 @@ func (this *TaskBoardServiceImpl) SaveTask(c web.IContext, task *entity.Task) (*
 
 // param idVersion
 // return
-func (this *TaskBoardServiceImpl) MoveTask(c web.IContext, in service.MoveTaskIn) error {
+func (this *TaskBoardServiceImpl) MoveTask(c maze.IContext, in service.MoveTaskIn) error {
 	ctx := c.(*AppCtx)
 	store := ctx.Store
 	if err := canAccessTask(store, ctx.Principal, in.TaskId); err != nil {
@@ -981,7 +981,7 @@ func SendMailWithInsecureSkip(addr string, a smtp.Auth, from string, to []string
 
 // param taskId
 // return
-func (this *TaskBoardServiceImpl) FetchNotifications(c web.IContext, criteria dto.NotificationSearchDTO) (app.Page, error) {
+func (this *TaskBoardServiceImpl) FetchNotifications(c maze.IContext, criteria dto.NotificationSearchDTO) (app.Page, error) {
 	q := c.(*AppCtx).Store.Query(T.NOTIFICATION).
 		All().
 		Where(T.NOTIFICATION_C_TASK_ID.Matches(criteria.TaskId)).
@@ -1006,7 +1006,7 @@ func (this *TaskBoardServiceImpl) FetchNotifications(c web.IContext, criteria dt
 
 // param task
 // return
-func (this *TaskBoardServiceImpl) SaveNotification(ctx web.IContext, notification *entity.Notification) (*entity.Notification, error) {
+func (this *TaskBoardServiceImpl) SaveNotification(ctx maze.IContext, notification *entity.Notification) (*entity.Notification, error) {
 	if _, err := ctx.(*AppCtx).Store.Save(notification); err != nil {
 		return nil, err
 	}
@@ -1015,7 +1015,7 @@ func (this *TaskBoardServiceImpl) SaveNotification(ctx web.IContext, notificatio
 
 // param id
 // return
-func (this *TaskBoardServiceImpl) DeleteNotification(ctx web.IContext, id int64) error {
+func (this *TaskBoardServiceImpl) DeleteNotification(ctx maze.IContext, id int64) error {
 
 	var n entity.Notification
 	n.Id = &id
