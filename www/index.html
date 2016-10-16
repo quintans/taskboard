@@ -10,7 +10,7 @@
 	<link rel="stylesheet" href="css/bootstrap-markdown.min.css">
 	<link rel="stylesheet" href="css/highlight-github.min.css">
 	<link rel="stylesheet" href="css/angular-markdown-editor.css">
- 
+
     <link rel="stylesheet" href="css/jquery-ui.css">
     <link rel="stylesheet" href="css/toastr.min.css">
 
@@ -69,7 +69,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 								data-toggle="dropdown">Board <b class="caret"></b></a>
 								<ul class="dropdown-menu">
 									<li><a x-ng-click="openBoard()">Open Board</a></li>
-									<li x-ng-show="hasRole('ADMIN')"><a x-ng-click="newBoard()">New Board</a></li>									
+									<li x-ng-show="hasRole('ADMIN')"><a x-ng-click="newBoard()">New Board</a></li>
 									<li x-ng-show="hasRole('ADMIN')" x-ng-class="{disabled:board==null}"><a x-ng-click="editBoard()">Edit Board</a></li>
 									<li x-ng-show="hasRole('ADMIN')" x-ng-class="{disabled:board==null}"><a x-ng-click="openBoardUsers()">Board Users</a></li>
 									<li x-ng-show="hasRole('ADMIN')" class="divider"></li>
@@ -144,7 +144,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 						<h4 class="modal-title">Task Board List</h4>
 					</div>
 					<div class="modal-body">
-					
+
 					  <div class="form-horizontal">
 					    <div class="form-group has-feedback">
 					      <label for="name" class="col-sm-1 control-label">Name</label>
@@ -154,7 +154,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 					      </div>
 						  <button type="button" x-ng-click="searchBoards()" class="btn btn-primary">Search</button>
 					    </div>
-					  </div>						
+					  </div>
 
 				        <table data-grid data-provider="gridProvider"
 				               class="table table-striped table-bordered table-hover table-condensed datatable spacer"
@@ -171,7 +171,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 				                    <td><a href="#/board/{{board.id}}" x-ng-click="closeList()">{{board.name}}</a></td>
 				                    <td>{{board.description}}</td>
 				                    <td>
-				                    	<img x-ng-show="hasRole('ADMIN')" data-tip="right" 
+				                    	<img x-ng-show="hasRole('ADMIN')" data-tip="right"
 						                	data-confirm="{message: 'All associated data to this board will be removed.<br>Do you wish to proceeed?'}"
 						                	data-confirm-callback="deleteBoard(board)"
 						                	data-original-title="Delete Board"
@@ -200,7 +200,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 						<h4 class="modal-title">Task Board User List</h4>
 					</div>
 					<div class="modal-body">
-					
+
 					  <div class="form-horizontal">
 					    <div class="form-group has-feedback">
 					      <label for="name" class="col-sm-1 control-label">Name</label>
@@ -210,7 +210,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 					      </div>
 						  <button type="button" x-ng-click="searchBoardUsers()" class="btn btn-primary">Search</button>
 					    </div>
-					  </div>						
+					  </div>
 
 				        <table data-grid data-provider="gridUsersProvider"
 				               class="table table-striped table-bordered table-hover table-condensed datatable spacer"
@@ -256,12 +256,13 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 	<script type="text/javascript" src="js/lib/highlight.min.js"></script>
 	<script type="text/javascript" src="js/lib/angular-highlightjs.min.js"></script>
 	<script type="text/javascript" src="js/lib/angular-markdown-editor.js"></script>
-	
+
 	<script type="text/javascript" src="js/lib/jquery.bootstrap.confirm.popover.js"></script>
 	<script type="text/javascript" src="js/lib/toastr.min.js"></script>
 	<script type="text/javascript" src="js/lib/resizable-tables.js"></script>
 	<script type="text/javascript" src="js/lib/poller.js"></script>
 	<script type="text/javascript" src="js/lib/ngStorage.min.js"></script>
+	<script type="text/javascript" src="js/lib/jquery.ui.touch-punch.min.js"></script>
 
 	<script type="text/javascript" src="js/gen/toolkit.js"></script>
 	<script type="text/javascript" src="js/gen/infra.js"></script>
