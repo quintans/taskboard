@@ -13,7 +13,6 @@ import (
 	tk "github.com/quintans/toolkit"
 	"github.com/quintans/toolkit/log"
 	"github.com/quintans/toolkit/web"
-	"github.com/quintans/toolkit/web/app"
 	"github.com/quintans/toolkit/web/poller"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -337,7 +336,6 @@ func LoginFilter(ctx maze.IContext) error {
 			Inner(T.USER_A_ROLES).Fetch().
 			Where(
 				db.And(T.USER_C_USERNAME.Matches(username),
-					T.USER_C_DEAD.Matches(app.NOT_DELETED),
 					T.USER_C_PASSWORD.Matches(pass))).
 			SelectTree(&user); ok && err == nil {
 			// role array

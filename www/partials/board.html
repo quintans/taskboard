@@ -132,7 +132,7 @@
 				                <tr>
 				                    <th data-grid-order="column" style="width: 30%;">Column</th>
 				                    <th data-grid-order="email" style="width: 60%;">e-mail</th>
-				                    <th style="width: 10%;">Actions</th>
+				                    <th style="width: 10%; text-align: center;">Actions</th>
 				                </tr>
 				            </thead>
 				            <tbody x-ng-switch data-on="notifProvider.results.length">
@@ -154,7 +154,7 @@
 										data-on-escape="editMode2=false" x-ng-blur="editMode2=false;notif.email=value2" 
 										data-auto-focus="editMode2">
 				                    </td>
-				                    <td>
+				                    <td style="text-align: center;">
 						                <button type="submit" class="btn btn-xs btn-primary" x-ng-click="saveNotification(notif)">
 							                <span class="glyphicon glyphicon-ok"></span>
 						                </button>
@@ -166,6 +166,7 @@
 									</td>
 				                </tr>
 				                <!-- new notification form -->
+				                <!-- 
 				                <tr>
 				                    <td><select class="form-control" x-ng-model="lane" x-ng-options="c.name for c in board.lanes" required></select></td>
 				                    <td><input type="email" class="form-control" x-ng-model="email" placeholder="Enter email" required></td>
@@ -178,9 +179,28 @@
 						                </button>
 									</td>
 				                </tr>
+				                -->
 				            </tbody>
 				        </table>
-				        <div data-my-paginator data-provider="notifProvider" style="width: 100%;"></div>
+				        <div data-my-paginator data-provider="notifProvider" style="width: 100%; margin-bottom: 20px;"></div>
+				        
+				        <div class="form-inline">
+						  <div class="form-group" style="width: 30%">
+						    <label class="sr-only" for="lane">Column</label>
+							<select id="lane" style="width: 100%" class="form-control" x-ng-model="lane" x-ng-options="c.name for c in board.lanes" required></select>
+						  </div>
+						  <div class="form-group" style="width: 60%">
+						    <label class="sr-only" for="email">Email</label>
+						    <input type="email" style="width: 100%" class="form-control" x-ng-model="email" placeholder="Enter email" required>
+						  </div>
+			                <button type="submit" class="btn btn-xs btn-primary" x-ng-click="addNotification(lane, email);lane=null;email=''">
+				                <span class="glyphicon glyphicon-ok"></span>
+			                </button>
+			                <button type="submit" class="btn btn-xs btn-danger" x-ng-click="lane=null;email=''">
+				                <span class="glyphicon glyphicon-remove"></span>
+			                </button>
+						</div>		                
+				        
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

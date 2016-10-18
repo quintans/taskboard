@@ -95,7 +95,6 @@ var taskboard;
             this.name = e.name;
             this.username = e.username;
             this.password = e.password;
-            this.dead = e.dead;
             this.boards = e.boards;
             this.tasks = e.tasks;
             return this;
@@ -564,13 +563,13 @@ var taskboard;
             }
             promisse.error(errorCallback != null ? errorCallback : defaultErrorHandler);
         };
-        TaskBoardService.prototype.disableUser = function (user, successCallback, errorCallback) {
+        TaskBoardService.prototype.deleteUser = function (user, successCallback, errorCallback) {
             var payload;
             if (user != null)
                 payload = user;
             else
                 payload = "null";
-            var promisse = this.http.post("rest/taskboard/DisableUser", payload);
+            var promisse = this.http.post("rest/taskboard/DeleteUser", payload);
             if (successCallback != null) {
                 promisse.success(successCallback);
             }

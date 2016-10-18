@@ -89,7 +89,6 @@ module taskboard {
 		name: string;
 		username: string;
 		password: string;
-		dead: number;
 		boards: Array<Board>;
 		tasks: Array<Task>;
 	
@@ -104,7 +103,6 @@ module taskboard {
 			this.name = e.name;
 			this.username = e.username;
 			this.password = e.password;
-			this.dead = e.dead;
 			this.boards = e.boards;
 			this.tasks = e.tasks;
 			return this;
@@ -680,7 +678,7 @@ module taskboard{
 			promisse.error(errorCallback != null ? errorCallback : defaultErrorHandler);
 		}
 		
-		disableUser(user: IdVersionDTO, 
+		deleteUser(user: IdVersionDTO, 
 			successCallback?: (result: void) => void, 
 			errorCallback?: (error) => void) {
 			var payload: any;
@@ -690,7 +688,7 @@ module taskboard{
 				payload = "null";
 		
 			var promisse = this.http.post(
-				"rest/taskboard/DisableUser", 
+				"rest/taskboard/DeleteUser", 
 				payload
 			);
 			if(successCallback != null) {

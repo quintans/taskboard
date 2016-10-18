@@ -22,7 +22,6 @@ var (
 	USER_C_NAME = USER.COLUMN("NAME")
 	USER_C_USERNAME = USER.COLUMN("USERNAME")
 	USER_C_PASSWORD = USER.COLUMN("PASSWORD")
-	USER_C_DEAD = USER.COLUMN("DEAD").Deletion()
 	//FK's
     // many to many
     USER_A_BOARDS = db.NewM2MAssociation(

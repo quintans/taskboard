@@ -384,10 +384,9 @@ angular.module('taskboard', ['ngRoute', 'remoteServices', 'ngStorage', 'hc.marke
 }).directive("myPaginator", function () {
     return {
         restrict: "A",
-        template: "<div ng-show=\"provider.maxRecords > 0\" class=\"pagination ui-paginator-msg\" style=\"float: left;\">Showing {{provider.pageFirst}} to {{provider.pageLast}} of {{provider.maxRecords}}</div><div ng-show=\"provider.maxPages > 1\" style=\"float: right;\"><ul class=\"pagination ui-paginator\">" + "<li ng-class=\"{disabled: provider.currentPage==1}\"><a ng-click=\"first()\">&laquo;&laquo;</a></li>" + "<li ng-class=\"{disabled: provider.currentPage==1}\"><a ng-click=\"previous()\">&laquo;</a></li>" + "<li ng-repeat=\"pageNumber in pages\" ng-class=\"{active: provider.currentPage==pageNumber}\">" + "<a ng-click=\"fetchPage(pageNumber)\">{{pageNumber}}</a></li>" + "<li ng-class=\"{disabled: provider.currentPage==provider.maxPages}\"><a ng-click=\"next()\">&raquo;</a></li>" + "<li ng-class=\"{disabled: provider.currentPage==provider.maxPages}\"><a ng-click=\"last()\">&raquo;&raquo;</a></li>" + "</ul></div>",
+        template: "<div ng-show=\"provider.maxRecords > 0\" class=\"ui-paginator-msg\" style=\"float: left;\">Showing {{provider.pageFirst}} to {{provider.pageLast}} of {{provider.maxRecords}}</div><div ng-show=\"provider.maxPages > 1\" style=\"float: right;\"><ul class=\"ui-paginator\">" + "<li ng-class=\"{disabled: provider.currentPage==1}\"><a ng-click=\"first()\">&laquo;&laquo;</a></li>" + "<li ng-class=\"{disabled: provider.currentPage==1}\"><a ng-click=\"previous()\">&laquo;</a></li>" + "<li ng-repeat=\"pageNumber in pages\" ng-class=\"{active: provider.currentPage==pageNumber}\">" + "<a ng-click=\"fetchPage(pageNumber)\">{{pageNumber}}</a></li>" + "<li ng-class=\"{disabled: provider.currentPage==provider.maxPages}\"><a ng-click=\"next()\">&raquo;</a></li>" + "<li ng-class=\"{disabled: provider.currentPage==provider.maxPages}\"><a ng-click=\"last()\">&raquo;&raquo;</a></li>" + "</ul></div>",
         scope: { "provider": "=" },
         link: function (scope, element, attrs) {
-            element.css("height", "20px");
             var redraw = function () {
                 var len = scope.provider.maxPages;
                 var pg = scope.provider.currentPage;
@@ -409,6 +408,9 @@ angular.module('taskboard', ['ngRoute', 'remoteServices', 'ngStorage', 'hc.marke
                 scope.pages = [];
                 for (var i = lower; i <= upper; i++) {
                     scope.pages.push(i);
+                }
+                if (scope.pages.length > 0) {
+                    element.css("height", "20px");
                 }
             };
             scope.provider.onFetch(function () {

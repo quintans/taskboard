@@ -41,7 +41,7 @@ interface IAppScope extends MyRootScope {
     newColumn();
     deleteColumn();
     
-    openBoard();
+    listBoard();
     boardCriteria: taskboard.BoardSearchDTO;
     gridProvider: toolkit.Provider<taskboard.Board>;
     searchBoards();
@@ -207,7 +207,7 @@ angular.module('taskboard')
         }
     };
 
-    $scope.openBoard = function() {
+    $scope.listBoard = function() {
         showListBoardPanel(true);
         $scope.searchBoards();
     }
@@ -611,7 +611,7 @@ interface IUsersScope extends ng.IScope {
     newUser();
     editUser(user: taskboard.UserDTO);
     saveUser();
-    disableUser(user: taskboard.IdVersionDTO);
+    deleteUser(user: taskboard.IdVersionDTO);
 }
 
 class UserEdit extends taskboard.UserDTO {
@@ -620,7 +620,7 @@ class UserEdit extends taskboard.UserDTO {
 
 function UsersCtrl($scope: IUsersScope, taskBoardService: taskboard.TaskBoardService) {
     $scope.criteria = new taskboard.UserSearchDTO(); 
-    $scope.criteria.pageSize = PAGESIZE_BIG;
+    $scope.criteria.pageSize = PAGESIZE_MEDIUM;
     // initiate sorting
     $scope.criteria.ascending = true;
     $scope.criteria.orderBy = "name";
@@ -671,11 +671,11 @@ function UsersCtrl($scope: IUsersScope, taskBoardService: taskboard.TaskBoardSer
         }
     };
 
-    $scope.disableUser = function(user: taskboard.User) {
+    $scope.deleteUser = function(user: taskboard.User) {
         var iv = new taskboard.IdVersionDTO();
         iv.id = user.id,
         iv.version = user.version
-        taskBoardService.disableUser(iv, function() {
+        taskBoardService.deleteUser(iv, function() {
             $scope.gridProvider.refresh();
         });
     }

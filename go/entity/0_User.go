@@ -23,7 +23,6 @@ type User struct {
 	Name *string `json:"name"`
 	Username *string `json:"username"`
 	Password *string `json:"password"`
-	Dead int64 `json:"dead"`
 	// ASSOCIATIONS
 	// boards
 	Boards []*Board `json:"boards"`
@@ -31,11 +30,6 @@ type User struct {
 	Roles []*Role `json:"roles"`
 	// tasks
 	Tasks []*Task `json:"tasks"`
-}
-
-func (this *User) SetDead(dead int64) {
-	this.Dead = dead
-	this.Mark("Dead")
 }
 
 func (this *User) SetUsername(username *string) {
@@ -66,7 +60,6 @@ func (this *User) Copy(entity *User) {
 		this.Name = app.CopyString(entity.Name)
 		this.Username = app.CopyString(entity.Username)
 		this.Password = app.CopyString(entity.Password)
-		this.Dead = entity.Dead
 		// associations
 		this.Boards = make([]*Board, len(entity.Boards), cap(entity.Boards))
 		copy(this.Boards, entity.Boards)
@@ -83,7 +76,6 @@ func (this *User) String() string {
 	sb.Add(", Name: ", this.Name)
 	sb.Add(", Username: ", this.Username)
 	sb.Add(", Password: ", this.Password)
-	sb.Add(", Dead: ", this.Dead)
 	sb.Add("}")
 	return sb.String()
 }

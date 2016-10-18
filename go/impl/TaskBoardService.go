@@ -288,15 +288,19 @@ func (this *TaskBoardServiceImpl) DeleteBoard(ctx maze.IContext, id int64) error
 		Execute(); err != nil {
 		return err
 	}
-	// delete board
-	if _, err := store.Delete(T.BOARD).
-		Where(T.BOARD_C_ID.Matches(id)).
+
+	if _, err := store.Delete(T.BOARD_USER).
+		Where(T.BOARD_USER_C_BOARDS_ID.Matches(id)).
 		Execute(); err != nil {
 		return err
 	}
-	// delete Board
-	//_, err := myCtx.GetBoardDAO().DeleteById(id)
-	return nil
+
+	// delete board
+	_, err := store.Delete(T.BOARD).
+		Where(T.BOARD_C_ID.Matches(id)).
+		Execute()
+
+	return err
 }
 
 func (this *TaskBoardServiceImpl) AddLane(ctx maze.IContext, boardId int64) error {
@@ -436,7 +440,6 @@ func (this *TaskBoardServiceImpl) SaveUser(c maze.IContext, user dto.UserDTO) (b
 			Set(T.USER_C_NAME, user.Name).
 			Set(T.USER_C_USERNAME, user.Username).
 			Set(T.USER_C_PASSWORD, user.Password).
-			Set(T.USER_C_DEAD, app.NOT_DELETED).
 			Execute()
 		if err != nil {
 			return false, err
@@ -461,8 +464,7 @@ func (this *TaskBoardServiceImpl) SaveUser(c maze.IContext, user dto.UserDTO) (b
 			Set(T.USER_C_NAME, user.Name).
 			Set(T.USER_C_USERNAME, user.Username).
 			Where(T.USER_C_ID.Matches(*user.Id).
-				And(T.USER_C_VERSION.Matches(*user.Version).
-					And(T.USER_C_DEAD.Matches(app.NOT_DELETED))))
+				And(T.USER_C_VERSION.Matches(*user.Version)))
 		if user.Password != nil {
 			dml.Set(T.USER_C_PASSWORD, user.Password)
 		}
@@ -517,12 +519,10 @@ func (this *TaskBoardServiceImpl) FetchUsers(ctx maze.IContext, criteria dto.Use
 		T.USER_C_NAME,
 		T.USER_C_USERNAME,
 	).Column(admin).As("Admin")
-	c := T.USER_C_DEAD.Matches(app.NOT_DELETED)
 	if !IsEmpty(criteria.Name) {
 		// insenstive case like
-		c = c.And(T.USER_C_NAME.ILike("%" + *criteria.Name + "%"))
+		q.Where(T.USER_C_NAME.ILike("%" + *criteria.Name + "%"))
 	}
-	q.Where(c)
 	order := criteria.OrderBy
 	if !IsEmpty(order) {
 		switch *order {
@@ -539,8 +539,39 @@ func (this *TaskBoardServiceImpl) FetchUsers(ctx maze.IContext, criteria dto.Use
 
 // param userId
 // return
-func (this *TaskBoardServiceImpl) DisableUser(c maze.IContext, iv dto.IdVersionDTO) error {
-	return app.SoftDeleteByIdAndVersion(c.(*AppCtx).Store, T.USER, *iv.Id, *iv.Version)
+func (this *TaskBoardServiceImpl) DeleteUser(c maze.IContext, iv dto.IdVersionDTO) error {
+	store := c.(*AppCtx).Store
+	if _, err := store.Delete(T.ROLE).
+		Where(T.ROLE_C_USER_ID.Matches(iv.Id)).
+		Execute(); err != nil {
+		return err
+	}
+
+	// delete all notifications
+	subquery := store.Query(T.TASK).
+		Distinct().
+		Column(T.TASK_C_ID).
+		Where(T.TASK_C_USER_ID.Matches(iv.Id))
+
+	if _, err := store.Delete(T.NOTIFICATION).
+		Where(T.NOTIFICATION_C_TASK_ID.In(subquery)).
+		Execute(); err != nil {
+		return err
+	}
+
+	if _, err := store.Delete(T.TASK).
+		Where(T.TASK_C_USER_ID.Matches(iv.Id)).
+		Execute(); err != nil {
+		return err
+	}
+
+	if _, err := store.Delete(T.BOARD_USER).
+		Where(T.BOARD_USER_C_USERS_ID.Matches(iv.Id)).
+		Execute(); err != nil {
+		return err
+	}
+
+	return app.DeleteByIdAndVersion(c.(*AppCtx).Store, T.USER, *iv.Id, *iv.Version)
 }
 
 // param boardId

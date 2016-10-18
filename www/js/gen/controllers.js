@@ -147,7 +147,7 @@ angular.module('taskboard')
         }
     }
     ;
-    $scope.openBoard = function () {
+    $scope.listBoard = function () {
         showListBoardPanel(true);
         $scope.searchBoards();
     };
@@ -468,7 +468,7 @@ var UserEdit = (function (_super) {
 }(taskboard.UserDTO));
 function UsersCtrl($scope, taskBoardService) {
     $scope.criteria = new taskboard.UserSearchDTO();
-    $scope.criteria.pageSize = PAGESIZE_BIG;
+    $scope.criteria.pageSize = PAGESIZE_MEDIUM;
     // initiate sorting
     $scope.criteria.ascending = true;
     $scope.criteria.orderBy = "name";
@@ -516,11 +516,11 @@ function UsersCtrl($scope, taskBoardService) {
             });
         }
     };
-    $scope.disableUser = function (user) {
+    $scope.deleteUser = function (user) {
         var iv = new taskboard.IdVersionDTO();
         iv.id = user.id,
             iv.version = user.version;
-        taskBoardService.disableUser(iv, function () {
+        taskBoardService.deleteUser(iv, function () {
             $scope.gridProvider.refresh();
         });
     };

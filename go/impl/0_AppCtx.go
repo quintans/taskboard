@@ -60,7 +60,7 @@ func (this *AppCtx) BuildJsonRpcTaskBoardService(transaction func(ctx maze.ICont
 	rpc.SetActionFilters("DeleteLastLane", authorize("ADMIN"))
 	rpc.SetActionFilters("SaveUser", authorize("ADMIN"))
 	rpc.SetActionFilters("FetchUsers", authorize("ADMIN"))
-	rpc.SetActionFilters("DisableUser", authorize("ADMIN"))
+	rpc.SetActionFilters("DeleteUser", authorize("ADMIN"))
 	rpc.SetActionFilters("AddUserToBoard", authorize("ADMIN"))
 	rpc.SetActionFilters("RemoveUserFromBoard", authorize("ADMIN"))
 	rpc.SetActionFilters("SaveUserName", authorize("USER"))

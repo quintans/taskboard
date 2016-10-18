@@ -24,20 +24,20 @@
                 <tr>
                     <th data-grid-order="name" style="width: 55%;">Name</th>
                     <th style="width: 30%;">Login</th>
-                    <th style="width: 5%;">Admin</th>
-                    <th style="width: 10%;">Actions</th>
+                    <th style="width: 5%; text-align: center;">Admin</th>
+                    <th style="width: 10%; text-align: center;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr x-ng-repeat="user in gridProvider.results">
                     <td><a x-ng-click="editUser(user)">{{user.name}}</a></td>
                     <td>{{user.username}}</td>
-                    <td><img data-ng-show="user.admin" alt="admin" src="img/check.png"></td>
-                    <td>
-                    	<img data-tip="right"
-		                	data-confirm="{message: 'This user will marked as inactive.<br>Do you wish to proceeed?'}"
-		                	data-confirm-callback="disableUser(user)"
-		                	data-original-title="Disable User"
+                    <td style="text-align: center;"><img data-ng-show="user.admin" alt="admin" src="img/check.png"></td>
+                    <td style="text-align: center;">
+                    	<img ng-hide="user.id == identity.id" data-tip="right"
+		                	data-confirm="{message: 'This user and all his tasks will be deleted.<br>It is not possible to undo this action.<br>Do you wish to proceeed?'}"
+		                	data-confirm-callback="deleteUser(user)"
+		                	data-original-title="Delete User"
 		                	alt="delete" src="img/remove.png">
 					</td>
                 </tr>

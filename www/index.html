@@ -68,7 +68,7 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 							<li class="dropdown"><a class="dropdown-toggle"
 								data-toggle="dropdown">Board <b class="caret"></b></a>
 								<ul class="dropdown-menu">
-									<li><a x-ng-click="openBoard()">Open Board</a></li>
+									<li><a x-ng-click="listBoard()">List Boards</a></li>
 									<li x-ng-show="hasRole('ADMIN')"><a x-ng-click="newBoard()">New Board</a></li>
 									<li x-ng-show="hasRole('ADMIN')" x-ng-class="{disabled:board==null}"><a x-ng-click="editBoard()">Edit Board</a></li>
 									<li x-ng-show="hasRole('ADMIN')" x-ng-class="{disabled:board==null}"><a x-ng-click="openBoardUsers()">Board Users</a></li>
@@ -163,14 +163,14 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 				                <tr>
 				                    <th data-grid-order="name" style="width: 30%;">Name</th>
 				                    <th style="width: 60%;">Description</th>
-				                    <th style="width: 10%;">Actions</th>
+				                    <th style="width: 10%; text-align: center;">Actions</th>
 				                </tr>
 				            </thead>
 				            <tbody>
 				                <tr x-ng-repeat="board in gridProvider.results">
 				                    <td><a href="#/board/{{board.id}}" x-ng-click="closeList()">{{board.name}}</a></td>
 				                    <td>{{board.description}}</td>
-				                    <td>
+				                    <td style="text-align: center;">
 				                    	<img x-ng-show="hasRole('ADMIN')" data-tip="right"
 						                	data-confirm="{message: 'All associated data to this board will be removed.<br>Do you wish to proceeed?'}"
 						                	data-confirm-callback="deleteBoard(board)"
@@ -218,13 +218,13 @@ tabindex="-1" role="dialog" aria-labelledby="loginFormLabel" aria-hidden="true">
 				            <thead>
 				                <tr>
 				                    <th data-grid-order="name" style="width: 90%;">User Name</th>
-				                    <th style="width: 10%;">Belongs</th>
+				                    <th style="width: 10%; text-align: center;">Belongs</th>
 				                </tr>
 				            </thead>
 				            <tbody>
 				                <tr x-ng-repeat="user in gridUsersProvider.results">
 				                    <td>{{user.name}}</td>
-				                    <td><input type="checkbox" x-ng-model="user.belongs" x-ng-change="updateBoardUser(user)"></td>
+				                    <td style="text-align: center;"><input type="checkbox" x-ng-model="user.belongs" x-ng-change="updateBoardUser(user)"></td>
 				                </tr>
 				            </tbody>
 				        </table>
