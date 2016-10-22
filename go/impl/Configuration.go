@@ -490,7 +490,6 @@ func jsonError(w http.ResponseWriter, code string, msg string) {
 }
 
 // ResponseBuffer buffers the response, permiting setting headers after starting writing the response.
-// It also gzips the response if the client browser supports it.
 func ResponseBuffer(ctx maze.IContext) error {
 	appCtx := ctx.(*AppCtx)
 	rec := web.NewBufferedResponse()
