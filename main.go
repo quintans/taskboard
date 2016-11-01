@@ -4,9 +4,7 @@ import (
 	"github.com/quintans/maze"
 	"github.com/quintans/taskboard/go/impl"
 	"github.com/quintans/toolkit/log"
-	"github.com/quintans/toolkit/web"
 
-	"net/http"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -30,7 +28,7 @@ func main() {
 	app.ContextFactory = impl.ContextFactory
 	app.Limit = impl.Limit
 	app.AuthenticationFilter = impl.AuthenticationFilter
-	app.ResponseBuffer = impl.ResponseBuffer
+	app.ResponseBuffer = maze.ResponseBuffer
 	app.TransactionFilter = impl.TransactionFilter
 	app.LoginFilter = impl.LoginFilter
 	app.PingFilter = impl.PingFilter
@@ -41,14 +39,7 @@ func main() {
 	// service factory
 	app.JsonRpc = appCtx.BuildJsonRpcTaskBoardService(app.TransactionFilter)
 
-	// delivering static content and preventing malicious access
-	fs := web.OnlyFilesFS{http.Dir(impl.ContentDir)}
-	fileServer := http.FileServer(fs)
-	app.fileServerFilter = func(ctx maze.IContext) error {
-		//logger.Debugf("serving static(): " + ctx.GetRequest().URL.Path)
-		fileServer.ServeHTTP(ctx.GetResponse(), ctx.GetRequest())
-		return nil
-	}
+	app.ContentDir = impl.ContentDir
 
 	app.Start()
 }

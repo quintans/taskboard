@@ -19,8 +19,8 @@ type App struct {
 	PingFilter           func(ctx maze.IContext) error
 	Poll                 http.Handler
 	IpPort               string
-	fileServerFilter     func(ctx maze.IContext) error
 	JsonRpc              *maze.JsonRpc
+	ContentDir           string
 }
 
 func (app *App) Start() {
@@ -43,7 +43,7 @@ func (app *App) Start() {
 	fh.Push("/ping", app.ResponseBuffer, app.AuthenticationFilter, app.TransactionFilter, app.PingFilter)
 
 	// delivering static content and preventing malicious access
-	fh.Push("/*", app.fileServerFilter)
+	fh.Static("/*", app.ContentDir)
 
 	http.Handle("/", fh)
 	http.Handle("/feed", app.Poll)

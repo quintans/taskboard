@@ -488,22 +488,3 @@ func jsonError(w http.ResponseWriter, code string, msg string) {
 	jmsg, _ := json.Marshal(msg)
 	http.Error(w, fmt.Sprintf(`{"code":"%s", "message":%s}`, code, jmsg), http.StatusInternalServerError)
 }
-
-// ResponseBuffer buffers the response, permiting setting headers after starting writing the response.
-func ResponseBuffer(ctx maze.IContext) error {
-	appCtx := ctx.(*AppCtx)
-	rec := web.NewBufferedResponse()
-	w := appCtx.Response
-	// passing a buffer instead of the original RW
-	appCtx.Response = rec
-	// restores the original response, even in the case of a panic
-	defer func() {
-		appCtx.Response = w
-	}()
-	err := ctx.Proceed()
-	if err == nil {
-		rec.Flush(w)
-	}
-
-	return err
-}
