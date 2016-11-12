@@ -51,11 +51,10 @@ var (
 	logger *log.Logger
 	TM     db.ITransactionManager
 
-	ContentDir     string
-	IpPort         string
-	HttpsOnly      bool
-	postLimit      int64
-	sessionTimeout time.Duration
+	ContentDir string
+	IpPort     string
+	HttpsOnly  bool
+	postLimit  int64
 
 	Poll *poller.Poller
 
@@ -92,7 +91,11 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	// web
+	/*
+	 * =======
+	 * WEB
+	 * =======
+	 */
 	ContentDir, _ = c.GetString("web", "dir")
 	ContentDir = replaceOsEnv(ContentDir)
 	fmt.Println("[web]dir=", ContentDir)
@@ -101,12 +104,14 @@ func init() {
 	fmt.Println("[web]ip_port=", IpPort)
 	HttpsOnly, _ = c.GetBool("web", "https_only")
 	fmt.Println("[web]https_only=", HttpsOnly)
-	timeout, _ := c.GetInt64("web", "session_timeout")
-	fmt.Println("[web]session_timeout=", timeout)
-	sessionTimeout = time.Duration(timeout) * time.Minute
 	postLimit, _ = c.GetInt64("web", "post_limit")
 	fmt.Println("[web]post_limit=", postLimit)
 
+	/*
+	 * =======
+	 * LOG
+	 * =======
+	 */
 	//// log configuration - its the same the default
 	level, _ := c.GetString("log", "level")
 	level = replaceOsEnv(level)
