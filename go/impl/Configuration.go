@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"errors"
 	"io"
 	"path/filepath"
 	"sync"
@@ -65,6 +66,8 @@ var (
 	SmtpFrom string
 
 	TaskBoardService service.ITaskBoardService
+
+	ErrNoTokenInRequest = errors.New("no token present in request")
 )
 
 var varguard = regexp.MustCompile("\\${[^{}]+}")
@@ -251,23 +254,49 @@ func serializePrincipal(p *Principal) (string, error) {
 		return "", err
 	}
 	// Create JWT token
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims[PRINCIPAL_KEY] = string(principal)
-	// Expiration time in minutes
-	token.Claims["exp"] = time.Now().Add(time.Minute * JWT_TIMEOUT).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		PRINCIPAL_KEY: string(principal),
+		// Expiration time in minutes
+		"exp": time.Now().Add(time.Minute * JWT_TIMEOUT).Unix(),
+	})
 	return token.SignedString(secret)
 }
 
 func deserializePrincipal(r *http.Request) *Principal {
-	token, err := jwt.ParseFromRequest(r, KeyFunction)
+	token, err := parseFromRequest(r, KeyFunction)
 	if err == nil && token.Valid {
-		p := token.Claims[PRINCIPAL_KEY].(string)
-		principal := &Principal{}
-		json.Unmarshal([]byte(p), principal)
-		return principal
-	} else {
-		return nil
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			p := claims[PRINCIPAL_KEY].(string)
+			principal := &Principal{}
+			json.Unmarshal([]byte(p), principal)
+			return principal
+		}
 	}
+
+	return nil
+}
+
+// Try to find the token in an http.Request.
+// This method will call ParseMultipartForm if there's no token in the header.
+// Currently, it looks in the Authorization header as well as
+// looking for an 'access_token' request parameter in req.Form.
+func parseFromRequest(req *http.Request, keyFunc jwt.Keyfunc) (token *jwt.Token, err error) {
+
+	// Look for an Authorization header
+	if ah := req.Header.Get("Authorization"); ah != "" {
+		// Should be a bearer token
+		if len(ah) > 6 && strings.ToUpper(ah[0:6]) == "BEARER" {
+			return jwt.Parse(ah[7:], keyFunc)
+		}
+	}
+
+	// Look for "access_token" parameter
+	req.ParseMultipartForm(10e6)
+	if tokStr := req.Form.Get("access_token"); tokStr != "" {
+		return jwt.Parse(tokStr, keyFunc)
+	}
+
+	return nil, ErrNoTokenInRequest
 }
 
 func TransactionFilter(ctx maze.IContext) error {
