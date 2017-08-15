@@ -130,9 +130,7 @@ func init() {
 	fmt.Println("[log]console=", logToConsole)
 
 	logLevel := log.ParseLevel(level, log.ERROR)
-	if logLevel <= log.INFO {
-		log.ShowCaller(true)
-	}
+	var show = logLevel <= log.INFO
 
 	// setting root writers
 	writers := make([]log.LogWriter, 0)
@@ -140,7 +138,7 @@ func init() {
 	if logToConsole {
 		writers = append(writers, log.NewConsoleAppender(false))
 	}
-	log.Register("/", logLevel, writers...)
+	log.Register("/", logLevel, writers...).ShowCaller(show)
 
 	//log.Register("/", logLevel, log.NewRollingFileAppender(file, size, int(count), true))
 

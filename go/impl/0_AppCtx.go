@@ -21,7 +21,6 @@ func NewAppCtx(
 ) *AppCtx {
 	var this = new(AppCtx)
 	this.Context = maze.NewContext(w, r, filters)
-	this.Overrider = this
 	this.taskBoardService = taskBoardService
 	return this
 }
@@ -34,6 +33,10 @@ type AppCtx struct {
 	Principal        *Principal
 	Store            db.IDb
 	taskBoardService service.ITaskBoardService
+}
+
+func (this *AppCtx) Proceed() error {
+	return this.Next(this.GetRequest())(this)
 }
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
