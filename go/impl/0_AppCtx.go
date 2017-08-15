@@ -36,7 +36,7 @@ type AppCtx struct {
 }
 
 func (this *AppCtx) Proceed() error {
-	return this.Next(this.GetRequest())(this)
+	return this.Next(this)
 }
 
 func (this *AppCtx) GetTaskBoardService() service.ITaskBoardService {
